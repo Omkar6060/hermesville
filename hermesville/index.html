@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hermesville</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  /* One committed look: the city at night-console, whatever the viewer's theme */
+  :root {
+    color-scheme: dark;
+    --ink: #1c2233;
+    --panel: #262e44;
+    --panel-2: #2f3853;
+    --line: #3b4563;
+    --text: #f3f1ea;
+    --muted: #a6aec6;
+    --sign: #ffc845;
+    --ok: #4fd18b;
+    --go: #5bb6ff;
+    --idle: #8a93ad;
+    --warn: #ff8a5b;
+    --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    --body: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  html, body { background: var(--ink); color: var(--text); }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 20px 40px; }
+  .wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 46px); line-height: 1; margin: 0; letter-spacing: .5px; color: var(--sign); text-wrap: balance; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .clock { font-family: var(--mono); font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums; min-width: 7.2ch; }
+  .clock small { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button { font: 700 13px var(--body); color: var(--muted); background: transparent; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--sign); color: #2a2206; }
+  .seg button:focus-visible, .tl:focus-visible, .play:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+  .play { font: 700 13px var(--body); color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+
+  .stage { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #0b1330; }
+  .scroller { overflow-x: auto; }
+  canvas { display: block; width: 100%; min-width: 760px; height: auto; aspect-ratio: 1280 / 540; }
+
+  .tlbox { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 10px; }
+  .tlhead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .tlhead b { color: var(--text); }
+  .tl { position: relative; height: 70px; cursor: pointer; border-radius: 6px; }
+  .lane { position: absolute; left: 0; right: 0; height: 14px; border-radius: 4px; background: #222a40; }
+  .blk { position: absolute; top: 0; height: 14px; border-radius: 4px; }
+  .blk.walk { opacity: .45; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 4px, transparent 4px 8px); }
+  .ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; font: 500 11px var(--mono); color: var(--muted); }
+  .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .head { position: absolute; top: -4px; bottom: 14px; width: 2px; background: var(--sign); box-shadow: 0 0 0 1px rgba(0,0,0,.4); pointer-events: none; }
+  .head::before { content: ""; position: absolute; top: -3px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--sign); }
+
+  .roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+  .card .top { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+  .card h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0; line-height: 1.1; letter-spacing: .3px; }
+  .card .role { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .meta span { font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .pill { margin-left: auto; font: 800 11px var(--body); letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .pill.working { background: rgba(79,209,139,.16); color: var(--ok); }
+  .pill.delivering, .pill.sending { background: rgba(91,182,255,.16); color: var(--go); }
+  .pill.done { background: rgba(243,241,234,.1); color: var(--text); }
+  .pill.scheduled, .pill.waiting, .pill.building { background: rgba(138,147,173,.16); color: var(--idle); }
+  .card.lot { border-style: dashed; background: transparent; }
+  .note { font-size: 13px; color: var(--muted); margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+  @media (max-width: 520px) { .clock { font-size: 22px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Hermesville</h1>
+      <p class="sub">Every automation on your Oracle server is a building. Watch the workers write, film and deliver your morning to Telegram.</p>
+    </div>
+    <div class="controls">
+      <div class="clock" id="clock" aria-live="off">07:00<small>IST</small></div>
+      <div class="seg" role="group" aria-label="View mode">
+        <button type="button" id="mReplay" aria-pressed="true">Replay this morning</button>
+        <button type="button" id="mLive" aria-pressed="false">Live now</button>
+      </div>
+      <button type="button" class="play" id="play">Pause</button>
+    </div>
+  </header>
+
+  <div class="stage"><div class="scroller"><canvas id="city" width="1280" height="540" aria-label="Animated cartoon city: Writers' Studio, Film Studio, Newsroom, Post Office and a construction lot for the next agent"></canvas></div></div>
+
+  <div class="tlbox">
+    <div class="tlhead"><span><b>Morning run</b> · 6:55 to 8:15 IST · click to jump</span><span id="nextUp"></span></div>
+    <div class="tl" id="tl" tabindex="0" role="slider" aria-label="Time of the morning run" aria-valuemin="415" aria-valuemax="495"></div>
+  </div>
+
+  <section class="roster" id="roster" aria-label="Agents"></section>
+
+  <p class="note"><b>Status is simulated from each job's schedule.</b> The next step is a small script on the server that reports real runs, so a failed job shows up here as a building in trouble.</p>
+</div>
+
+<script>
+(() => {
+  // ---------- the agents (schedule in IST minutes after midnight) ----------
+  const AGENTS = [
+    { id: "writer", name: "Writers' Studio", role: "Reel script writer", start: 420, work: 4, walk: 5, to: "film",
+      body: "#ff8a5b", roof: "#b9492f", x: 60, w: 220, h: 205, carry: "scroll", shout: "tap tap tap",
+      what: "Hermes picks a fresh tech, maths or science fact and writes the reel script.", out: "today.json + script on Telegram" },
+    { id: "film", name: "Film Studio", role: "Reel video factory", start: 430, work: 3, walk: 5, to: "post",
+      body: "#7a6cf0", roof: "#4a3fb3", x: 345, w: 250, h: 235, carry: "reel", shout: "Action!",
+      what: "Voice, Pexels clips and captions get cut into a 1080×1920 reel.", out: "reel_YYYY-MM-DD.mp4" },
+    { id: "news", name: "Newsroom", role: "AI news digest", start: 480, work: 4, walk: 3, to: "post",
+      body: "#2fb3a3", roof: "#1b7a6f", x: 655, w: 215, h: 265, carry: "paper", shout: "Breaking!",
+      what: "Scans the last 24 hours of AI news and writes a top-5 digest plus a Shorts script.", out: "Digest on Telegram" },
+    { id: "post", name: "Post Office", role: "Telegram delivery", x: 930, w: 180, h: 185,
+      body: "#f2c14e", roof: "#c0392b",
+      what: "Everything finished leaves here as a paper plane to your Telegram.", out: "Your phone" },
+  ];
+  const LOT = { x: 1140, w: 130 };
+  const byId = Object.fromEntries(AGENTS.map(a => [a.id, a]));
+  const W = 1280, H = 540, GROUND = 430;
+  const T0 = 415, T1 = 495;               // replay window 6:55 → 8:15
+  const SPEED = 1.25;                      // sim minutes per real second in replay
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const door = a => a.x + a.w * 0.5;
+  const workers = AGENTS.filter(a => a.start != null);
+  workers.forEach(a => { a.arrive = a.start + a.work + a.walk; });
+
+  function status(a, t) {
+    if (a.id === "post") {
+      if (workers.some(w => t >= w.arrive && t < w.arrive + 1.6)) return "sending";
+      if (workers.some(w => t >= w.start + w.work && t < w.arrive)) return "waiting";
+      return "waiting";
+    }
+    if (t < a.start) return "scheduled";
+    if (t < a.start + a.work) return "working";
+    if (t < a.arrive) return "delivering";
+    return "done";
+  }
+  const LABEL = { scheduled: "Scheduled", working: "Working", delivering: "Delivering", done: "Done today", sending: "Sending", waiting: "Open" };
+
+  // ---------- time ----------
+  let mode = "replay", playing = !reduced, simT = reduced ? 431.5 : T0, last = performance.now();
+  function istNow() {
+    const d = new Date(Date.now() + 5.5 * 3600e3);
+    return d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
+  }
+  const fmt = t => { t = ((t % 1440) + 1440) % 1440; const h = Math.floor(t / 60), m = Math.floor(t % 60); return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0"); };
+
+  // ---------- canvas ----------
+  const cv = document.getElementById("city"), ctx = cv.getContext("2d");
+  function fit() {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.width * dpr * H / W);
+    ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+  }
+  new ResizeObserver(fit).observe(cv);
+
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (c1, c2, k) => { const a = hex(c1), b = hex(c2); return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], k))).join(",")})`; };
+  const SKY = [ // hour, top, bottom
+    [0, "#070d24", "#16204a"], [5, "#0a1333", "#1d2a5c"], [6, "#2b2d63", "#8a5a86"], [6.6, "#4a5fa8", "#f19a6c"],
+    [7.4, "#5aa0e6", "#ffd2a0"], [9, "#4f9be8", "#bfe3fb"], [16.5, "#4f9be8", "#bfe3fb"], [18, "#5870b8", "#f6a26a"],
+    [18.8, "#2d2a60", "#b0557a"], [19.8, "#0c1332", "#1f2552"], [24, "#070d24", "#16204a"]];
+  function sky(h) {
+    for (let i = 0; i < SKY.length - 1; i++) {
+      const [h0, t0, b0] = SKY[i], [h1, t1, b1] = SKY[i + 1];
+      if (h >= h0 && h <= h1) { const k = (h - h0) / (h1 - h0); return [mix(t0, t1, k), mix(b0, b1, k)]; }
+    }
+    return [SKY[0][1], SKY[0][2]];
+  }
+  const darkness = h => (h < 6 || h > 19.5) ? 1 : h < 7 ? 1 - (h - 6) : h > 18.3 ? (h - 18.3) / 1.2 : 0;
+
+  // fixed random details
+  const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(42);
+  const STARS = Array.from({ length: 90 }, () => [rnd() * W, rnd() * 260, rnd() * 1.4 + .4, rnd() * 6]);
+  const SKYLINE = Array.from({ length: 26 }, (_, i) => [i * 52 - 10, 70 + rnd() * 120, 40 + rnd() * 20]);
+  const CLOUDS = Array.from({ length: 5 }, () => [rnd() * W, 50 + rnd() * 120, .6 + rnd() * .6]);
+
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+  function drawSky(t, now) {
+    const h = t / 60, [top, bot] = sky(h), g = ctx.createLinearGradient(0, 0, 0, GROUND);
+    g.addColorStop(0, top); g.addColorStop(1, bot); ctx.fillStyle = g; ctx.fillRect(0, 0, W, GROUND);
+    const dk = darkness(h);
+    if (dk > 0) STARS.forEach(([x, y, r, p]) => { ctx.globalAlpha = dk * (.5 + .5 * Math.sin(now / 700 + p)); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); });
+    ctx.globalAlpha = 1;
+    // sun 6:00→18:30 arc, moon otherwise
+    const day = (h - 6) / 12.5;
+    if (day > -0.05 && day < 1.05) {
+      const sx = lerp(80, W - 80, day), sy = 330 - Math.sin(Math.PI * Math.min(1, Math.max(0, day))) * 270;
+      ctx.fillStyle = "rgba(255,214,110,.25)"; ctx.beginPath(); ctx.arc(sx, sy, 46, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffd66e"; ctx.beginPath(); ctx.arc(sx, sy, 30, 0, 7); ctx.fill();
+    } else {
+      ctx.fillStyle = "#f3f1ea"; ctx.beginPath(); ctx.arc(1060, 80, 22, 0, 7); ctx.fill();
+      ctx.fillStyle = top; ctx.beginPath(); ctx.arc(1070, 74, 20, 0, 7); ctx.fill();
+    }
+    // clouds drift
+    ctx.fillStyle = dk > .5 ? "rgba(160,170,210,.18)" : "rgba(255,255,255,.85)";
+    CLOUDS.forEach(([x, y, s]) => {
+      const cx = ((x + now / 90 * s) % (W + 200)) - 100;
+      [[0, 0, 26], [24, -10, 30], [52, 0, 24], [26, 6, 26]].forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.arc(cx + dx * s, y + dy * s, r * s, 0, 7); ctx.fill(); });
+    });
+    // far skyline
+    ctx.fillStyle = mix("#3a4a7a", "#141b38", dk);
+    SKYLINE.forEach(([x, hh, w]) => ctx.fillRect(x, GROUND - hh, w, hh));
+    if (dk > .3) { ctx.fillStyle = `rgba(255,216,107,${.5 * dk})`; SKYLINE.forEach(([x, hh, w], i) => { for (let k = 0; k < 4; k++) if ((i + k) % 3 === 0) ctx.fillRect(x + 8 + (k % 2) * 18, GROUND - hh + 14 + k * 22, 7, 9); }); }
+  }
+
+  function drawStreet(dk) {
+    ctx.fillStyle = mix("#b8b3a6", "#4a4f63", dk); ctx.fillRect(0, GROUND, W, 20);           // sidewalk
+    ctx.fillStyle = mix("#8f8a7e", "#393d4f", dk); ctx.fillRect(0, GROUND + 20, W, 3);
+    ctx.fillStyle = mix("#4b5063", "#23273a", dk); ctx.fillRect(0, GROUND + 23, W, 70);        // road
+    ctx.fillStyle = mix("#f3e7b0", "#b8ad7a", dk);
+    for (let x = 10; x < W; x += 60) ctx.fillRect(x, GROUND + 56, 32, 4);
+    ctx.fillStyle = mix("#6fbf5e", "#2c4a35", dk); ctx.fillRect(0, GROUND + 93, W, H - GROUND - 93); // verge
+  }
+
+  function windows(a, lit, dk, now, busy) {
+    const cols = Math.max(2, Math.floor((a.w - 40) / 44)), rows = Math.max(2, Math.floor((a.h - 110) / 46));
+    const gx = (a.w - 30 - cols * 30) / (cols - 1 || 1);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x = a.x + 15 + c * (30 + gx), y = GROUND - a.h + 58 + r * 46;
+      const on = busy || (dk > .4 && (r + c + a.x) % 3 !== 0);
+      ctx.fillStyle = on ? "#ffd86b" : mix("#bcdcf2", "#28324f", dk);
+      rr(x, y, 30, 30, 4); ctx.fill();
+      if (busy && (r + c) % 2 === 0) { // a worker's head bobbing at the desk
+        const b = Math.sin(now / 160 + r * 2 + c) * 2;
+        ctx.fillStyle = "#4a3a2e"; ctx.beginPath(); ctx.arc(x + 15, y + 17 + b, 7, 0, 7); ctx.fill();
+        ctx.fillStyle = a.body; ctx.fillRect(x + 7, y + 24 + b, 16, 6);
+      }
+      ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 2; rr(x, y, 30, 30, 4); ctx.stroke();
+    }
+  }
+
+  function sign(a, text) {
+    ctx.font = "22px 'Lilita One', 'Trebuchet MS', sans-serif";
+    const tw = ctx.measureText(text).width, sw = tw + 26, sx = a.x + (a.w - sw) / 2, sy = GROUND - a.h + 12;
+    ctx.fillStyle = "#1c2233"; rr(sx, sy, sw, 34, 8); ctx.fill();
+    ctx.fillStyle = "#ffc845"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, sx + sw / 2, sy + 18);
+  }
+
+  function building(a, t, dk, now) {
+    const st = status(a, t), busy = st === "working" || (a.id === "post" && st === "sending");
+    const top = GROUND - a.h;
+    // side depth
+    ctx.fillStyle = a.roof; ctx.fillRect(a.x + a.w, top + 10, 14, a.h - 10);
+    ctx.fillStyle = a.body; ctx.fillRect(a.x, top, a.w, a.h);
+    ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(a.x, top, a.w, 6);
+
+    // roofs and props
+    if (a.id === "writer") { // chimney with paper puffs
+      ctx.fillStyle = a.roof; ctx.fillRect(a.x + a.w - 60, top - 36, 26, 36);
+      if (busy) for (let i = 0; i < 4; i++) { const k = ((now / 900) + i / 4) % 1; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#fff"; ctx.save(); ctx.translate(a.x + a.w - 47 + Math.sin(k * 6 + i) * 10, top - 40 - k * 70); ctx.rotate(k * 3 + i); ctx.fillRect(-7, -9, 14, 18); ctx.restore(); }
+      ctx.globalAlpha = 1;
+    }
+    if (a.id === "film") { // sawtooth roof + spinning reel
+      ctx.fillStyle = a.roof;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(a.x + i * a.w / 5, top); ctx.lineTo(a.x + (i + 1) * a.w / 5, top); ctx.lineTo(a.x + (i + 1) * a.w / 5, top - 22); ctx.closePath(); ctx.fill(); }
+      const rx = a.x + 42, ry = top - 48, ang = busy ? now / 250 : 0;
+      ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(rx, ry, 24, 0, 7); ctx.fill();
+      ctx.fillStyle = "#d9d4ff"; for (let i = 0; i < 5; i++) { const q = ang + i * 1.2566; ctx.beginPath(); ctx.arc(rx + Math.cos(q) * 13, ry + Math.sin(q) * 13, 5, 0, 7); ctx.fill(); }
+      ctx.fillStyle = "#1c2233"; ctx.fillRect(rx - 2, ry + 20, 4, 30);
+    }
+    if (a.id === "news") { // dish with signal waves
+      const dx = a.x + a.w - 50, dy = top - 30;
+      ctx.fillStyle = "#1c2233"; ctx.fillRect(dx - 2, dy, 4, 30);
+      ctx.fillStyle = "#e8eef7"; ctx.beginPath(); ctx.ellipse(dx, dy, 22, 13, -0.5, 0, 7); ctx.fill();
+      if (busy) { ctx.strokeStyle = "#ffc845"; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { const k = ((now / 700) + i / 3) % 1; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(dx - 10, dy - 8, 14 + k * 40, -2.4, -1.2); ctx.stroke(); } ctx.globalAlpha = 1; }
+    }
+    if (a.id === "post") { // pitched roof + waving flag with plane
+      ctx.fillStyle = a.roof; ctx.beginPath(); ctx.moveTo(a.x - 10, top + 4); ctx.lineTo(a.x + a.w / 2, top - 44); ctx.lineTo(a.x + a.w + 24, top + 4); ctx.closePath(); ctx.fill();
+      const fx = a.x + a.w / 2, fy = top - 44;
+      ctx.fillStyle = "#1c2233"; ctx.fillRect(fx - 2, fy - 50, 4, 50);
+      ctx.fillStyle = "#5bb6ff"; ctx.beginPath(); ctx.moveTo(fx + 2, fy - 50);
+      for (let i = 0; i <= 10; i++) ctx.lineTo(fx + 2 + i * 4.4, fy - 50 + Math.sin(now / 200 + i * .7) * 3);
+      for (let i = 10; i >= 0; i--) ctx.lineTo(fx + 2 + i * 4.4, fy - 28 + Math.sin(now / 200 + i * .7) * 3);
+      ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(fx + 12, fy - 38); ctx.lineTo(fx + 36, fy - 45); ctx.lineTo(fx + 22, fy - 33); ctx.closePath(); ctx.fill();
+      // mailbox
+      ctx.fillStyle = "#c0392b"; rr(a.x + a.w + 20, GROUND - 40, 22, 40, 6); ctx.fill();
+      ctx.fillStyle = "#1c2233"; ctx.fillRect(a.x + a.w + 24, GROUND - 30, 14, 3);
+    }
+
+    sign(a, a.name);
+    windows(a, busy, dk, now, busy);
+    // door
+    ctx.fillStyle = "#3a2a22"; rr(door(a) - 17, GROUND - 46, 34, 46, [10, 10, 0, 0]); ctx.fill();
+    ctx.fillStyle = "#ffc845"; ctx.beginPath(); ctx.arc(door(a) + 9, GROUND - 22, 2.5, 0, 7); ctx.fill();
+
+    // speech bubble while working
+    if (busy && a.shout) bubble(a.x + a.w * .5, top - (a.id === "film" ? 38 : 20), a.shout, now);
+  }
+
+  function bubble(x, y, text, now) {
+    ctx.font = "700 15px 'Nunito Sans', sans-serif";
+    const w = ctx.measureText(text).width + 20, b = Math.sin(now / 300) * 3;
+    ctx.fillStyle = "#fff"; rr(x - w / 2, y - 40 + b, w, 28, 10); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 6, y - 13 + b); ctx.lineTo(x + 6, y - 13 + b); ctx.lineTo(x, y - 4 + b); ctx.fill();
+    ctx.fillStyle = "#1c2233"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y - 26 + b);
+  }
+
+  function person(x, y, color, now, walking, carry, face = 1) {
+    const sw = walking ? Math.sin(now / 110) * 6 : 0, bob = walking ? Math.abs(Math.sin(now / 110)) * 2 : Math.sin(now / 500 + x) * 1.2;
+    ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x - 4, y - 16); ctx.lineTo(x - 4 + sw, y); ctx.moveTo(x + 4, y - 16); ctx.lineTo(x + 4 - sw, y); ctx.stroke();
+    ctx.fillStyle = color; rr(x - 11, y - 38 - bob, 22, 26, 8); ctx.fill();
+    ctx.fillStyle = "#f4c9a0"; ctx.beginPath(); ctx.arc(x, y - 48 - bob, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3a2a22"; ctx.beginPath(); ctx.arc(x, y - 52 - bob, 11, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(x + 4 * face, y - 47 - bob, 1.8, 0, 7); ctx.fill();
+    if (carry) item(carry, x + 12 * face, y - 34 - bob, now);
+  }
+
+  function item(kind, x, y, now) {
+    if (kind === "scroll") { ctx.fillStyle = "#fff6d8"; rr(x - 9, y - 12, 18, 22, 3); ctx.fill(); ctx.fillStyle = "#b9a77a"; for (let i = 0; i < 3; i++) ctx.fillRect(x - 5, y - 7 + i * 5, 10, 2); }
+    if (kind === "reel") { ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill(); ctx.fillStyle = "#d9d4ff"; for (let i = 0; i < 4; i++) { const q = now / 200 + i * 1.57; ctx.beginPath(); ctx.arc(x + Math.cos(q) * 6, y + Math.sin(q) * 6, 2.5, 0, 7); ctx.fill(); } }
+    if (kind === "paper") { ctx.fillStyle = "#eef0f3"; rr(x - 11, y - 10, 22, 18, 2); ctx.fill(); ctx.fillStyle = "#2fb3a3"; ctx.fillRect(x - 8, y - 7, 16, 4); ctx.fillStyle = "#9aa3b5"; ctx.fillRect(x - 8, y, 7, 5); ctx.fillRect(x + 1, y, 7, 2); }
+  }
+
+  function plane(x, y, now) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(-0.35 + Math.sin(now / 150) * .05);
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(20, -10); ctx.lineTo(-6, 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#5bb6ff"; ctx.beginPath(); ctx.moveTo(-6, 10); ctx.lineTo(20, -10); ctx.lineTo(-2, 2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function lot(dk, now) {
+    const x = LOT.x, w = LOT.w;
+    ctx.fillStyle = mix("#a07a4f", "#4d3d2c", dk); ctx.fillRect(x, GROUND - 8, w, 8);
+    // fence
+    ctx.fillStyle = mix("#ffb347", "#8a6430", dk); for (let i = 0; i < 7; i++) ctx.fillRect(x + 4 + i * 18, GROUND - 34, 6, 30);
+    ctx.fillRect(x, GROUND - 28, w, 5);
+    // crane
+    ctx.strokeStyle = "#ffc845"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + w - 20, GROUND - 8); ctx.lineTo(x + w - 20, GROUND - 300); ctx.lineTo(x - 70, GROUND - 300); ctx.stroke();
+    ctx.lineWidth = 2; for (let y = GROUND - 290; y < GROUND - 10; y += 20) { ctx.beginPath(); ctx.moveTo(x + w - 26, y); ctx.lineTo(x + w - 14, y + 20); ctx.stroke(); }
+    const sway = Math.sin(now / 1200) * 0.08, hx = x + 50, hy = GROUND - 300;
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(sway);
+    ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 120); ctx.stroke();
+    ctx.fillStyle = "#1c2233"; rr(-62, 120, 124, 50, 8); ctx.fill();
+    ctx.fillStyle = "#ffc845"; ctx.font = "16px 'Lilita One', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("NEXT AGENT", 0, 136); ctx.fillStyle = "#f3f1ea"; ctx.font = "600 12px 'Nunito Sans', sans-serif"; ctx.fillText("Job search helper", 0, 155);
+    ctx.restore();
+  }
+
+  function frame(now) {
+    const dt = Math.min(.1, (now - last) / 1000); last = now;
+    if (mode === "live") simT = istNow();
+    else if (playing) { simT += dt * SPEED; if (simT > T1) simT = T0; }
+    const t = simT, dk = darkness(t / 60);
+
+    drawSky(t, now);
+    drawStreet(dk);
+    AGENTS.forEach(a => building(a, t, dk, now));
+    lot(dk, now);
+
+    // idle staff waiting by their doors
+    workers.forEach(a => { const s = status(a, t); if (s === "scheduled" || s === "done") person(door(a) + 34, GROUND + 14, a.body, now, false, null, -1); });
+    person(door(byId.post) - 40, GROUND + 14, "#c0392b", now, false, null, 1); // postmaster
+
+    // couriers walking to the next building
+    workers.forEach(a => {
+      if (status(a, t) !== "delivering") return;
+      const k = (t - a.start - a.work) / a.walk, from = door(a), to = door(byId[a.to]) - 10;
+      person(lerp(from, to, k), GROUND + 16, a.body, now, true, a.carry, to > from ? 1 : -1);
+    });
+    // planes to Telegram
+    workers.forEach(a => {
+      const k = (t - a.arrive) / 1.6;
+      if (k >= 0 && k < 1) { const p = byId.post; plane(lerp(p.x + p.w / 2, W + 60, k), lerp(GROUND - p.h - 60, 30, k) - Math.sin(k * Math.PI) * 30, now); }
+    });
+
+    // vignette at night
+    if (dk > 0) { ctx.fillStyle = `rgba(7,13,36,${dk * .18})`; ctx.fillRect(0, 0, W, H); }
+
+    ui(t);
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- DOM: clock, timeline, roster ----------
+  const $ = id => document.getElementById(id);
+  const tl = $("tl"), roster = $("roster"), pct = t => ((t - T0) / (T1 - T0)) * 100;
+  const lanes = workers.map((a, i) => {
+    const lane = document.createElement("div"); lane.className = "lane"; lane.style.top = (i * 18) + "px";
+    lane.innerHTML = `<div class="blk" style="left:${pct(a.start)}%;width:${pct(a.start + a.work) - pct(a.start)}%;background:${a.body}" title="${a.name} working"></div>` +
+      `<div class="blk walk" style="left:${pct(a.start + a.work)}%;width:${pct(a.arrive) - pct(a.start + a.work)}%;background-color:${a.body}" title="Walking to ${byId[a.to].name}"></div>`;
+    tl.appendChild(lane); return lane;
+  });
+  const ticks = document.createElement("div"); ticks.className = "ticks";
+  for (let m = 420; m <= 490; m += 10) ticks.innerHTML += `<span style="left:${pct(m)}%">${fmt(m)}</span>`;
+  tl.appendChild(ticks);
+  const head = document.createElement("div"); head.className = "head"; tl.appendChild(head);
+
+  function jump(clientX) {
+    const r = tl.getBoundingClientRect();
+    simT = T0 + Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * (T1 - T0);
+    setMode("replay");
+  }
+  tl.addEventListener("pointerdown", e => { jump(e.clientX); tl.setPointerCapture(e.pointerId); });
+  tl.addEventListener("pointermove", e => { if (e.buttons) jump(e.clientX); });
+  tl.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") { simT = Math.min(T1, Math.max(T0, simT + (e.key === "ArrowRight" ? 1 : -1))); setMode("replay"); e.preventDefault(); }
+  });
+
+  const cards = {};
+  AGENTS.forEach(a => {
+    const el = document.createElement("article"); el.className = "card";
+    const when = a.start != null ? `Daily ${fmt(a.start)} IST` : "";
+    el.innerHTML = `<div class="top"><span class="dot" style="background:${a.body}"></span><div><h2>${a.name}</h2><div class="role">${a.role}</div></div><span class="pill">…</span></div>
+      <p>${a.what}</p><div class="meta">${when ? `<div>Runs <span>${when}</span></div>` : ""}<div>Output <span>${a.out}</span></div></div>`;
+    roster.appendChild(el); cards[a.id] = el.querySelector(".pill");
+  });
+  const lotCard = document.createElement("article"); lotCard.className = "card lot";
+  lotCard.innerHTML = `<div class="top"><span class="dot" style="background:transparent;border:2px dashed var(--sign)"></span><div><h2>Empty lot</h2><div class="role">Next agent</div></div><span class="pill building">Planned</span></div>
+    <p>The crane is waiting for the job search helper. Each new automation gets its own building here.</p>`;
+  roster.appendChild(lotCard);
+
+  let lastUi = 0;
+  function ui(t) {
+    const now = performance.now(); if (now - lastUi < 200) return; lastUi = now;
+    $("clock").innerHTML = `${fmt(t)}<small>IST</small>`;
+    const inWin = t >= T0 && t <= T1;
+    head.style.left = pct(Math.min(T1, Math.max(T0, t))) + "%"; head.hidden = !inWin;
+    tl.setAttribute("aria-valuenow", Math.round(t)); tl.setAttribute("aria-valuetext", fmt(t) + " IST");
+    AGENTS.forEach(a => { const s = status(a, t), p = cards[a.id]; if (p.dataset.s !== s) { p.dataset.s = s; p.className = "pill " + s; p.textContent = LABEL[s]; } });
+    // next job
+    const upcoming = workers.map(a => { let d = a.start - t; if (d <= 0) d += 1440; return [d, a]; }).sort((x, y) => x[0] - y[0])[0];
+    const d = upcoming[0], hh = Math.floor(d / 60), mm = Math.floor(d % 60);
+    $("nextUp").textContent = `Next: ${upcoming[1].name} in ${hh ? hh + "h " : ""}${mm}m`;
+  }
+
+  // ---------- controls ----------
+  function setMode(m) {
+    mode = m;
+    $("mReplay").setAttribute("aria-pressed", m === "replay"); $("mLive").setAttribute("aria-pressed", m === "live");
+    $("play").hidden = m === "live";
+  }
+  $("mReplay").onclick = () => { if (mode !== "replay") { simT = T0; playing = true; $("play").textContent = "Pause"; } setMode("replay"); };
+  $("mLive").onclick = () => setMode("live");
+  $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; };
+  if (!playing) $("play").textContent = "Play";
+
+  fit(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

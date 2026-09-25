@@ -1,0 +1,8 @@
+.env
+*.key
+__pycache__/
+venv/
+work/
+videos/
+*.mp4
+today.json
