@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c2233">
+<meta name="description" content="A cartoon town where my Hermes AI agents live and work.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hermesville">
 <title>Hermesville</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +36,7 @@
     --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   }
   html, body { background: var(--ink); color: var(--text); }
-  body { font-family: var(--body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 20px 40px; }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)); }
   .wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
 
   header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; }
@@ -71,6 +80,11 @@
   .pill.working { background: rgba(79,209,139,.16); color: var(--ok); }
   .pill.delivering, .pill.sending { background: rgba(91,182,255,.16); color: var(--go); }
   .pill.done { background: rgba(243,241,234,.1); color: var(--text); }
+  .pill.failed { background: rgba(255,107,91,.18); color: #ff6b5b; }
+  .src { font: 700 11px var(--body); letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: rgba(138,147,173,.16); color: var(--idle); }
+  .src.live { background: rgba(79,209,139,.16); color: var(--ok); }
+  .card .last { font-size: 13px; color: var(--text); border-top: 1px solid var(--line); padding-top: 8px; }
+  .card .last:empty { display: none; }
   .pill.scheduled, .pill.waiting, .pill.building { background: rgba(138,147,173,.16); color: var(--idle); }
   .card.lot { border-style: dashed; background: transparent; }
   .note { font-size: 13px; color: var(--muted); margin: 0; }
@@ -99,7 +113,7 @@
   <div class="stage"><div class="scroller"><canvas id="city" width="1280" height="540" aria-label="Animated cartoon city: Writers' Studio, Film Studio, Newsroom, Post Office and a construction lot for the next agent"></canvas></div></div>
 
   <div class="tlbox">
-    <div class="tlhead"><span><b>Morning run</b> · 6:55 to 8:15 IST · click to jump</span><span id="nextUp"></span></div>
+    <div class="tlhead"><span><b>Morning run</b> · 6:55 to 8:15 IST · click to jump</span><span><span class="src" id="src">Simulated</span> <span id="nextUp"></span></span></div>
     <div class="tl" id="tl" tabindex="0" role="slider" aria-label="Time of the morning run" aria-valuemin="415" aria-valuemax="495"></div>
   </div>
 
@@ -147,7 +161,30 @@
     if (t < a.arrive) return "delivering";
     return "done";
   }
-  const LABEL = { scheduled: "Scheduled", working: "Working", delivering: "Delivering", done: "Done today", sending: "Sending", waiting: "Open" };
+  const LABEL = { scheduled: "Scheduled", working: "Working", delivering: "Delivering", done: "Done today", sending: "Sending", waiting: "Open", failed: "Failed" };
+
+  // ---------- real status from the server (status.json in the repo) ----------
+  let real = null, userPickedMode = false;
+  const istDate = d => new Date(d.getTime() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const REAL_MAP = { running: "working", done: "done", failed: "failed" };
+  function realJob(id) {
+    const j = real && real.jobs && real.jobs[id];
+    if (!j || !j.at) return null;
+    const at = new Date(j.at);
+    return isNaN(at) || istDate(at) !== istDate(new Date()) ? null : j;   // only today's runs count
+  }
+  function effStatus(a, t) {
+    if (mode === "live" && a.id !== "post") { const j = realJob(a.id); if (j && REAL_MAP[j.state]) return REAL_MAP[j.state]; }
+    return status(a, t);
+  }
+  async function pullStatus() {
+    try {
+      const r = await fetch("status.json?ts=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) return;
+      real = await r.json();
+      if (real && real.updated && !userPickedMode && mode !== "live") setMode("live");
+    } catch (e) { /* no status file (e.g. preview) - stay simulated */ }
+  }
 
   // ---------- time ----------
   let mode = "replay", playing = !reduced, simT = reduced ? 431.5 : T0, last = performance.now();
@@ -252,7 +289,7 @@
   }
 
   function building(a, t, dk, now) {
-    const st = status(a, t), busy = st === "working" || (a.id === "post" && st === "sending");
+    const st = effStatus(a, t), busy = st === "working" || (a.id === "post" && st === "sending");
     const top = GROUND - a.h;
     // side depth
     ctx.fillStyle = a.roof; ctx.fillRect(a.x + a.w, top + 10, 14, a.h - 10);
@@ -301,6 +338,10 @@
 
     // speech bubble while working
     if (busy && a.shout) bubble(a.x + a.w * .5, top - (a.id === "film" ? 38 : 20), a.shout, now);
+    if (st === "failed") { // grey smoke and a call for help
+      for (let i = 0; i < 6; i++) { const k = ((now / 1400) + i / 6) % 1; ctx.globalAlpha = .75 * (1 - k); ctx.fillStyle = "#6b7085"; ctx.beginPath(); ctx.arc(a.x + a.w * .3 + Math.sin(k * 5 + i) * 18 + i * 12, top - 10 - k * 110, 12 + k * 22, 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1; bubble(a.x + a.w * .5, top - 30, "Help! Job failed", now);
+    }
   }
 
   function bubble(x, y, text, now) {
@@ -365,7 +406,7 @@
     lot(dk, now);
 
     // idle staff waiting by their doors
-    workers.forEach(a => { const s = status(a, t); if (s === "scheduled" || s === "done") person(door(a) + 34, GROUND + 14, a.body, now, false, null, -1); });
+    workers.forEach(a => { const s = effStatus(a, t); if (s === "scheduled" || s === "done" || s === "failed") person(door(a) + 34, GROUND + 14, a.body, now, false, null, -1); });
     person(door(byId.post) - 40, GROUND + 14, "#c0392b", now, false, null, 1); // postmaster
 
     // couriers walking to the next building
@@ -403,7 +444,7 @@
 
   function jump(clientX) {
     const r = tl.getBoundingClientRect();
-    simT = T0 + Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * (T1 - T0);
+    simT = T0 + Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * (T1 - T0); userPickedMode = true;
     setMode("replay");
   }
   tl.addEventListener("pointerdown", e => { jump(e.clientX); tl.setPointerCapture(e.pointerId); });
@@ -412,27 +453,38 @@
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") { simT = Math.min(T1, Math.max(T0, simT + (e.key === "ArrowRight" ? 1 : -1))); setMode("replay"); e.preventDefault(); }
   });
 
-  const cards = {};
+  const cards = {}, lastLines = {};
   AGENTS.forEach(a => {
     const el = document.createElement("article"); el.className = "card";
     const when = a.start != null ? `Daily ${fmt(a.start)} IST` : "";
     el.innerHTML = `<div class="top"><span class="dot" style="background:${a.body}"></span><div><h2>${a.name}</h2><div class="role">${a.role}</div></div><span class="pill">…</span></div>
       <p>${a.what}</p><div class="meta">${when ? `<div>Runs <span>${when}</span></div>` : ""}<div>Output <span>${a.out}</span></div></div>`;
-    roster.appendChild(el); cards[a.id] = el.querySelector(".pill");
+    el.insertAdjacentHTML("beforeend", '<div class="last"></div>'); roster.appendChild(el); cards[a.id] = el.querySelector(".pill"); lastLines[a.id] = el.querySelector(".last");
   });
   const lotCard = document.createElement("article"); lotCard.className = "card lot";
   lotCard.innerHTML = `<div class="top"><span class="dot" style="background:transparent;border:2px dashed var(--sign)"></span><div><h2>Empty lot</h2><div class="role">Next agent</div></div><span class="pill building">Planned</span></div>
     <p>The crane is waiting for the job search helper. Each new automation gets its own building here.</p>`;
   roster.appendChild(lotCard);
 
-  let lastUi = 0;
+  let lastUi = 0, lastActive = null;
+  const fmtAt = iso => { const d = new Date(iso); if (isNaN(d)) return "?"; const i = new Date(d.getTime() + 5.5 * 3600e3); const same = istDate(d) === istDate(new Date()); return (same ? "" : i.toISOString().slice(5, 10) + " ") + i.toISOString().slice(11, 16); };
   function ui(t) {
     const now = performance.now(); if (now - lastUi < 200) return; lastUi = now;
     $("clock").innerHTML = `${fmt(t)}<small>IST</small>`;
     const inWin = t >= T0 && t <= T1;
     head.style.left = pct(Math.min(T1, Math.max(T0, t))) + "%"; head.hidden = !inWin;
     tl.setAttribute("aria-valuenow", Math.round(t)); tl.setAttribute("aria-valuetext", fmt(t) + " IST");
-    AGENTS.forEach(a => { const s = status(a, t), p = cards[a.id]; if (p.dataset.s !== s) { p.dataset.s = s; p.className = "pill " + s; p.textContent = LABEL[s]; } });
+    AGENTS.forEach(a => {
+      const s = effStatus(a, t), p = cards[a.id];
+      if (p.dataset.s !== s) { p.dataset.s = s; p.className = "pill " + s; p.textContent = LABEL[s]; }
+      const j = real && real.jobs && real.jobs[a.id], txt = j && j.at ? `Last run ${fmtAt(j.at)} · ${j.state}${j.note ? " · " + j.note : ""}` : "";
+      if (lastLines[a.id].textContent !== txt) lastLines[a.id].textContent = txt;
+    });
+    const src = $("src"), liveReal = mode === "live" && real && real.updated;
+    src.className = "src" + (liveReal ? " live" : ""); src.textContent = liveReal ? "Live from server · " + fmtAt(real.updated) : (mode === "live" ? "Live clock · simulated" : "Replay");
+    // on narrow screens, keep the busy building in view
+    const active = workers.find(a => ["working", "delivering", "failed"].includes(effStatus(a, t)));
+    if (active && active.id !== lastActive) { lastActive = active.id; const sc = document.querySelector(".scroller"); if (sc.scrollWidth > sc.clientWidth + 4) sc.scrollTo({ left: (door(active) / W) * sc.scrollWidth - sc.clientWidth / 2, behavior: reduced ? "auto" : "smooth" }); }
     // next job
     const upcoming = workers.map(a => { let d = a.start - t; if (d <= 0) d += 1440; return [d, a]; }).sort((x, y) => x[0] - y[0])[0];
     const d = upcoming[0], hh = Math.floor(d / 60), mm = Math.floor(d % 60);
@@ -445,12 +497,15 @@
     $("mReplay").setAttribute("aria-pressed", m === "replay"); $("mLive").setAttribute("aria-pressed", m === "live");
     $("play").hidden = m === "live";
   }
-  $("mReplay").onclick = () => { if (mode !== "replay") { simT = T0; playing = true; $("play").textContent = "Pause"; } setMode("replay"); };
-  $("mLive").onclick = () => setMode("live");
+  $("mReplay").onclick = () => { userPickedMode = true; if (mode !== "replay") { simT = T0; playing = true; $("play").textContent = "Pause"; } setMode("replay"); };
+  $("mLive").onclick = () => { userPickedMode = true; setMode("live"); };
   $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; };
   if (!playing) $("play").textContent = "Play";
 
   fit(); requestAnimationFrame(frame);
+  pullStatus(); setInterval(pullStatus, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) pullStatus(); });
+  if ("serviceWorker" in navigator && /github\.io$|^localhost$/.test(location.hostname)) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>
 </body>

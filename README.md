@@ -32,7 +32,24 @@ The page is a single HTML file with no build step.
 
 **Replay this morning** plays 06:55 to 08:15 in about a minute. **Live now** follows the real IST clock, with day and night in the sky. Click the timeline to jump to any moment.
 
-Right now each building's status is simulated from its schedule.
+## Phone app
+
+Hermesville installs as an app from GitHub Pages. It has a home-screen icon, opens full screen, and updates itself on every push.
+
+- **Android (Chrome):** open the Pages link, then tap ⋮ → **Install app**.
+- **iPhone (Safari):** open the link, then tap Share → **Add to Home Screen**.
+
+## Live status
+
+The server writes `status.json` to this repo after each job using `server/report_status.py`. The app reads it every minute and whenever you open it. When a job fails, its building fills with smoke and its card turns red. With no report for today, the app falls back to the schedule simulation.
+
+```
+python3 ~/hermesville/report_status.py film running
+python3 ~/hermesville/report_status.py film done "reel sent"
+python3 ~/hermesville/report_status.py news failed "search quota hit"
+```
+
+`server/install_reporter.sh` installs the script and wires it into the reel video service. The GitHub token lives only in `~/.hermes/.env` on the server.
 
 ## The reel video factory
 
@@ -61,7 +78,8 @@ PEXELS_API_KEY=...
 
 ## Roadmap
 
-- [ ] Live status: the server reports each run, so a failed job shows smoke over its building
+- [x] Live status: the server reports each run, so a failed job shows smoke over its building
+- [x] Installable phone app (PWA)
 - [ ] Job search helper moves into the empty lot
 - [ ] Better voice and word-by-word animated captions for the reels
 - [ ] Night shift: workers go home and lights switch off after the last job
