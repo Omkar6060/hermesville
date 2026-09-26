@@ -732,7 +732,7 @@
     const hist = (chats[c.id] || []).filter(m => !m.err).slice(-12).map(m => ({ role: m.r === "me" ? "user" : "assistant", content: m.t }));
     const sys = `Omkar is messaging you from the Hermesville command center on his phone. In this thread you act as ${c.ctx} Keep replies short and plain enough for a phone screen. If you change a job or file, say exactly what changed.`;
     try {
-      const res = await api("/v1/chat/completions", { method: "POST", headers: { "X-Hermes-Session-Key": "hermesville-" + c.id }, body: JSON.stringify({ model: conn.model || "hermes-agent", messages: [{ role: "system", content: sys }, ...hist] }) }, 300000);
+      const res = await api("/v1/chat/completions", { method: "POST", body: JSON.stringify({ model: conn.model || "hermes-agent", messages: [{ role: "system", content: sys }, ...hist] }) }, 300000);
       const reply = res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content;
       push(c.id, { r: "ai", t: reply || "(empty reply)" }); online = true;
     } catch (e) { push(c.id, { r: "ai", err: true, t: e.message }); if (/reach|Key/.test(e.message)) online = false; }
