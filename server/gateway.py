@@ -6,7 +6,9 @@ gateway.py - the only part of Hermesville the internet can reach.
                                                  ├── /auth/*          login: password + 2FA code
                                                  ├── /api/chat        ─► Hermes API   127.0.0.1:8642 (never public)
                                                  ├── /api/tracking/*  ─► tracker      127.0.0.1:8650 (never public)
-                                                 └── /api/status      ─► ~/hermesville/status.json
+                                                 ├── /api/status      ─► ~/hermesville/status.json
+                                                 ├── /api/agents      ─► `hermes cron` (build, run, pause, delete agents)
+                                                 └── /api/plan/draft  ─► Hermes turns a request into a dated schedule
 
 Every /api/* call needs a session token from /auth/login. The Hermes master
 key, Notion token and calendar address never leave this server.
@@ -32,6 +34,8 @@ import json
 import os
 import re
 import secrets
+import shutil
+import subprocess
 import struct
 import sys
 import threading
@@ -45,6 +49,7 @@ ENV = Path.home() / ".hermes" / ".env"
 HOME_DIR = Path.home() / "hermesville"
 STATUS_FILE = HOME_DIR / "status.json"
 REVOKED_FILE = HOME_DIR / "revoked_sessions.json"
+AGENTS_FILE = HOME_DIR / "agents.json"
 PORT = 8600
 HERMES = "http://127.0.0.1:8642"
 TRACKER = "http://127.0.0.1:8650"
@@ -170,6 +175,78 @@ def add_fail(ip):
         FAILS.setdefault(ip, []).append(time.time())
 
 
+# ---------------------------------------------------------------- agents built from the app
+MAX_AGENTS = 12
+RESERVED = {"writer", "film", "news", "post", "hq", "lot"}
+NAME_RE = re.compile(r"^[\w][\w '.&-]{1,39}$")
+SCHED_RE = re.compile(r"^[a-zA-Z0-9 :*/,.-]{3,60}$")
+COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+AGENTS_LOCK = threading.Lock()
+DESIGNER = (
+    "You design scheduled agents for Hermes Agent. Do NOT create any job and do NOT run any tools. "
+    "Reply with ONLY one JSON object and nothing else: "
+    '{"name": "2-4 word friendly name, like Weather Watch", '
+    '"schedule": "one of: every day at 8am | weekdays at 9:30am | every monday at 10am | every 2h | a 5-field cron expression", '
+    '"prompt": "complete, self-contained instructions for the agent. It runs with no memory each time, so say exactly '
+    'what to check or do and how to format the result as a short Telegram message."}'
+)
+
+
+PLANNER = (
+    "You turn a request into a dated schedule. Do NOT run any tools and do NOT create anything. "
+    "Reply with ONLY one JSON object and nothing else: "
+    '{"title": "short plan name", "summary": "2-3 sentences: the goal and how the plan gets there", '
+    '"sessions": [{"date": "YYYY-MM-DD", "start": "HH:MM", "end": "HH:MM", "title": "short topic", '
+    '"details": "what to do in this session, with concrete resources or tasks"}]}. '
+    "Use 24-hour times. At most 60 sessions. Follow the preferences exactly (start date, days, time, length). "
+    "Build up logically from basics to practice and review, and put a revision or mock-test session near the end when it fits."
+)
+
+
+def hermes_bin():
+    extra = [str(Path.home() / p) for p in (".local/bin", ".hermes/bin", "bin")] + ["/usr/local/bin"]
+    return os.environ.get("HERMES_BIN") or shutil.which("hermes", path=os.pathsep.join([os.environ.get("PATH", "")] + extra))
+
+
+def run_hermes(args, timeout=90):
+    exe = hermes_bin()
+    if not exe:
+        return 127, "hermes command not found on the server"
+    try:
+        r = subprocess.run([exe] + args, capture_output=True, text=True, timeout=timeout)   # list args: no shell, no injection
+        return r.returncode, (r.stdout + r.stderr).strip()[-600:]
+    except subprocess.TimeoutExpired:
+        return 124, "hermes took too long to answer"
+
+
+def load_agents():
+    try:
+        return json.loads(AGENTS_FILE.read_text())
+    except Exception:
+        return []
+
+
+def save_agents(items):
+    HOME_DIR.mkdir(exist_ok=True)
+    tmp = AGENTS_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(items, indent=2))
+    os.replace(tmp, AGENTS_FILE)
+
+
+def slugify(name, taken):
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:24] or "agent"
+    slug, n = base, 2
+    while slug in taken or slug in RESERVED:
+        slug, n = "%s-%d" % (base, n), n + 1
+    return slug
+
+
+def wrap_prompt(aid, prompt):
+    rs = "python3 ~/hermesville/report_status.py %s" % aid
+    return ("First run: %s running\n\n%s\n\nWhen you have finished, run: %s done \"<one-line summary>\". "
+            "If anything fails, run: %s failed \"<short reason>\"." % (rs, prompt.strip(), rs, rs))
+
+
 # ---------------------------------------------------------------- HTTP
 class Gateway(BaseHTTPRequestHandler):
     server_version = "hermesville"
@@ -253,6 +330,10 @@ class Gateway(BaseHTTPRequestHandler):
                 return self.send(200, None, raw=STATUS_FILE.read_bytes())
             except FileNotFoundError:
                 return self.send(200, {"updated": None, "jobs": {}})
+        if path == "/api/agents":
+            if not self.session():
+                return
+            return self.send(200, {"agents": load_agents(), "hermes": bool(hermes_bin())})
         if path.startswith("/api/tracking/"):
             if not self.session():
                 return
@@ -311,11 +392,115 @@ class Gateway(BaseHTTPRequestHandler):
                 "Authorization": "Bearer " + self.cfg().get("API_SERVER_KEY", ""), "Content-Type": "application/json"}, timeout=300)
             return self.send(code, None, raw=out)
 
+        if path == "/api/agents/draft":
+            if not self.session():
+                return
+            try:
+                desc = str(json.loads(raw).get("description", "")).strip()
+            except Exception:
+                desc = ""
+            if not 8 <= len(desc) <= 1500:
+                return self.send(400, {"error": "Describe the agent in a sentence or two."})
+            body = json.dumps({"model": "hermes-agent", "messages": [
+                {"role": "system", "content": DESIGNER}, {"role": "user", "content": desc}]}).encode()
+            code, out = self.upstream("POST", HERMES + "/v1/chat/completions", body, {
+                "Authorization": "Bearer " + self.cfg().get("API_SERVER_KEY", ""), "Content-Type": "application/json"}, timeout=180)
+            if code != 200:
+                return self.send(502, {"error": "Hermes couldn't draft it (%s)." % code})
+            try:
+                text = json.loads(out)["choices"][0]["message"]["content"]
+                d = json.loads(re.search(r"\{.*\}", text, re.S).group(0))
+                return self.send(200, {"name": str(d.get("name", ""))[:40], "schedule": str(d.get("schedule", ""))[:60],
+                                       "prompt": str(d.get("prompt", ""))[:4000]})
+            except Exception:
+                return self.send(502, {"error": "Hermes replied, but not in the expected format. Try again or build it yourself."})
+
+        if path == "/api/plan/draft":
+            if not self.session():
+                return
+            try:
+                b = json.loads(raw)
+                req = str(b.get("request", "")).strip()
+                prefs = {k: str(b.get(k, ""))[:40] for k in ("start", "time", "minutes", "days")}
+            except Exception:
+                req = ""
+            if not 8 <= len(req) <= 1500:
+                return self.send(400, {"error": "Tell Hermes what to plan in a sentence or two."})
+            today = time.strftime("%Y-%m-%d (%A)")
+            user = ("Today is %s. Request: %s\nPreferences: start on %s, sessions at %s, %s minutes each, on %s."
+                    % (today, req, prefs["start"] or "tomorrow", prefs["time"] or "19:00", prefs["minutes"] or "60", prefs["days"] or "weekdays"))
+            body = json.dumps({"model": "hermes-agent", "messages": [
+                {"role": "system", "content": PLANNER}, {"role": "user", "content": user}]}).encode()
+            code, out = self.upstream("POST", HERMES + "/v1/chat/completions", body, {
+                "Authorization": "Bearer " + self.cfg().get("API_SERVER_KEY", ""), "Content-Type": "application/json"}, timeout=240)
+            if code != 200:
+                return self.send(502, {"error": "Hermes couldn't draft the plan (%s)." % code})
+            try:
+                text = json.loads(out)["choices"][0]["message"]["content"]
+                plan = json.loads(re.search(r"\{.*\}", text, re.S).group(0))
+                assert isinstance(plan.get("sessions"), list) and plan["sessions"]
+                plan["sessions"] = plan["sessions"][:60]
+                return self.send(200, {"plan": plan})
+            except Exception:
+                return self.send(502, {"error": "Hermes replied, but not as a plan. Try again or reword the request."})
+
+        if path == "/api/agents":
+            if not self.session():
+                return
+            try:
+                b = json.loads(raw)
+                name, sched, prompt = str(b.get("name", "")).strip(), str(b.get("schedule", "")).strip(), str(b.get("prompt", "")).strip()
+                color = str(b.get("color", "#5fd08a"))
+            except Exception:
+                return self.send(400, {"error": "Send name, schedule and prompt."})
+            if not NAME_RE.match(name):
+                return self.send(400, {"error": "Name: 2-40 letters, numbers or spaces."})
+            if not SCHED_RE.match(sched):
+                return self.send(400, {"error": "Schedule looks wrong. Try: every day at 8am, weekdays at 9am, every 2h."})
+            if not 10 <= len(prompt) <= 4000:
+                return self.send(400, {"error": "Instructions: 10 to 4000 characters."})
+            if not COLOR_RE.match(color):
+                color = "#5fd08a"
+            with AGENTS_LOCK:
+                items = load_agents()
+                if len(items) >= MAX_AGENTS:
+                    return self.send(400, {"error": "The city is full (%d agents). Delete one first." % MAX_AGENTS})
+                aid = slugify(name, {a["id"] for a in items})
+                code, out = run_hermes(["cron", "create", sched, wrap_prompt(aid, prompt), "--name", "hv-" + aid, "--deliver", "telegram"])
+                if code != 0:
+                    return self.send(502, {"error": "Hermes didn't create the job: " + (out or "exit %d" % code)[-300:]})
+                rec = {"id": aid, "name": name, "schedule": sched, "prompt": prompt, "color": color,
+                       "paused": False, "created": int(time.time())}
+                items.append(rec)
+                save_agents(items)
+            return self.send(200, {"ok": True, "agent": rec, "hermes": out[-300:]})
+
+        m = re.fullmatch(r"/api/agents/([a-z0-9-]{2,40})/(run|pause|resume|delete)", path)
+        if m:
+            if not self.session():
+                return
+            aid, action = m.groups()
+            with AGENTS_LOCK:
+                items = load_agents()
+                rec = next((a for a in items if a["id"] == aid), None)
+                if not rec:
+                    return self.send(404, {"error": "No such agent."})
+                code, out = run_hermes(["cron", "remove" if action == "delete" else action, "hv-" + aid])
+                if code != 0 and action != "delete":
+                    return self.send(502, {"error": "Hermes: " + (out or "exit %d" % code)[-300:]})
+                if action == "delete":
+                    items = [a for a in items if a["id"] != aid]
+                elif action in ("pause", "resume"):
+                    rec["paused"] = action == "pause"
+                save_agents(items)
+            return self.send(200, {"ok": True, "agents": items})
+
         if path.startswith("/api/tracking/"):
             if not self.session():
                 return
             code, out = self.upstream("POST", TRACKER + "/api/" + path[len("/api/tracking/"):], raw, {
-                "Authorization": "Bearer " + self.cfg().get("API_SERVER_KEY", ""), "Content-Type": "application/json"})
+                "Authorization": "Bearer " + self.cfg().get("API_SERVER_KEY", ""), "Content-Type": "application/json"},
+                timeout=240 if path.endswith("/plan") else 30)
             return self.send(code, None, raw=out)
         self.send(404, {"error": "not found"})
 

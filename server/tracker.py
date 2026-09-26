@@ -13,18 +13,24 @@ Config (in ~/.hermes/.env):
                              (several calendars: separate with commas)
     NOTION_TOKEN             Notion internal integration secret (ntn_... / secret_...)
     NOTION_DB_ID             the Notion database to show and add notes to
+    GCAL_SA_FILE             optional: Google service-account key (JSON) that can write to your calendar
+    GCAL_CALENDAR_ID         optional: the calendar it writes plans to (usually your Gmail address)
     TRACKER_PORT             optional, default 8650
 
 Endpoints (also reachable under /tracking/...):
     GET   /api/summary?days=7        calendar events + Notion items
     POST  /api/notion                {"title": "...", "due": "2026-09-30"}  add a note
     PATCH /api/notion/<page_id>      {"done": true}                         tick it off
+    POST  /api/plan                  save a plan: Notion page, Notion tasks, calendar events
 Standard library only (Python 3.9+).
 """
+import base64
 import datetime as dt
 import json
 import os
 import re
+import subprocess
+import tempfile
 import threading
 import time
 import urllib.error
@@ -57,6 +63,10 @@ ICS_URLS = [u.strip() for u in os.environ.get("GCAL_ICS_URL", "").split(",") if 
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_DB = os.environ.get("NOTION_DB_ID", "").replace("-", "")
 PORT = int(os.environ.get("TRACKER_PORT", "8650"))
+GCAL_SA_FILE = os.path.expanduser(os.environ.get("GCAL_SA_FILE", ""))
+GCAL_CALENDAR_ID = os.environ.get("GCAL_CALENDAR_ID", "")
+NOTION_API = os.environ.get("NOTION_API", "https://api.notion.com/v1")
+GCAL_API = os.environ.get("GCAL_API", "https://www.googleapis.com/calendar/v3")
 
 
 # ---------------------------------------------------------------- iCal
@@ -214,7 +224,7 @@ def calendar(days):
 
 # ---------------------------------------------------------------- Notion
 def notion(method, path, body=None):
-    req = urllib.request.Request("https://api.notion.com/v1" + path, method=method,
+    req = urllib.request.Request(NOTION_API + path, method=method,
                                  data=json.dumps(body).encode() if body is not None else None)
     req.add_header("Authorization", "Bearer " + NOTION_TOKEN)
     req.add_header("Notion-Version", "2022-06-28")
@@ -283,6 +293,149 @@ def notion_done(page_id, done=True):
     return notion("PATCH", "/pages/" + page_id, {"properties": props})
 
 
+# ---------------------------------------------------------------- Google Calendar (write)
+def calendar_writable():
+    return bool(GCAL_SA_FILE and GCAL_CALENDAR_ID and os.path.exists(GCAL_SA_FILE))
+
+
+def _b64u(b):
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+
+
+_gtoken = {"value": None, "exp": 0}
+
+
+def google_token():
+    """Service-account OAuth: a JWT signed with the key via the openssl command (no pip packages)."""
+    if _gtoken["value"] and time.time() < _gtoken["exp"] - 60:
+        return _gtoken["value"]
+    sa = json.loads(Path(GCAL_SA_FILE).read_text())
+    now = int(time.time())
+    head = _b64u(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
+    claims = _b64u(json.dumps({"iss": sa["client_email"], "scope": "https://www.googleapis.com/auth/calendar.events",
+                               "aud": sa["token_uri"], "iat": now, "exp": now + 3600}).encode())
+    fd, keyfile = tempfile.mkstemp()
+    try:
+        os.chmod(keyfile, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(sa["private_key"])
+        sig = subprocess.run(["openssl", "dgst", "-sha256", "-sign", keyfile], input=(head + "." + claims).encode(),
+                             capture_output=True, check=True).stdout
+    finally:
+        os.remove(keyfile)
+    body = ("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=" + head + "." + claims + "." + _b64u(sig)).encode()
+    req = urllib.request.Request(sa["token_uri"], data=body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        tok = json.loads(r.read().decode())
+    _gtoken.update(value=tok["access_token"], exp=now + int(tok.get("expires_in", 3600)))
+    return _gtoken["value"]
+
+
+def calendar_add(summary, description, start, end, plan_id):
+    from urllib.parse import quote
+    ev = {"summary": summary[:200], "description": description[:4000],
+          "start": {"dateTime": start.isoformat()}, "end": {"dateTime": end.isoformat()},
+          "extendedProperties": {"private": {"hermesville": plan_id}}}
+    req = urllib.request.Request("%s/calendars/%s/events" % (GCAL_API, quote(GCAL_CALENDAR_ID, safe="")), method="POST",
+                                 data=json.dumps(ev).encode(), headers={"Authorization": "Bearer " + google_token(),
+                                                                        "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read().decode())
+
+
+# ---------------------------------------------------------------- plans (Notion page + tasks + calendar)
+DATE_RE, TIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$"), re.compile(r"^\d{2}:\d{2}$")
+
+
+def clean_plan(p):
+    title = str(p.get("title", "")).strip()[:120]
+    if not title:
+        raise ValueError("The plan needs a title.")
+    out = []
+    for x in (p.get("sessions") or [])[:60]:
+        d, a, b = str(x.get("date", "")), str(x.get("start", "")), str(x.get("end", ""))
+        if not (DATE_RE.match(d) and TIME_RE.match(a) and TIME_RE.match(b)):
+            continue
+        start = dt.datetime.strptime(d + " " + a, "%Y-%m-%d %H:%M").astimezone()   # server's local time zone
+        end = dt.datetime.strptime(d + " " + b, "%Y-%m-%d %H:%M").astimezone()
+        if end <= start:
+            end = start + dt.timedelta(hours=1)
+        out.append({"start": start, "end": end, "title": str(x.get("title", "Session")).strip()[:120] or "Session",
+                    "details": str(x.get("details", "")).strip()[:600]})
+    if not out:
+        raise ValueError("The plan has no valid sessions.")
+    out.sort(key=lambda x: x["start"])
+    return title, str(p.get("summary", "")).strip()[:1500], out
+
+
+def _rt(text):
+    return [{"type": "text", "text": {"content": text[:1900]}}]
+
+
+def notion_plan_page(title, summary, sessions):
+    s = schema()
+    blocks = [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": _rt(summary or "Plan made with Hermes.")}}]
+    week = None
+    for x in sessions:
+        monday = (x["start"] - dt.timedelta(days=x["start"].weekday())).strftime("Week of %d %b")
+        if monday != week:
+            week = monday
+            blocks.append({"object": "block", "type": "heading_3", "heading_3": {"rich_text": _rt(monday)}})
+        line = "%s %s-%s · %s" % (x["start"].strftime("%a %d %b"), x["start"].strftime("%H:%M"), x["end"].strftime("%H:%M"), x["title"])
+        if x["details"]:
+            line += " - " + x["details"]
+        blocks.append({"object": "block", "type": "to_do", "to_do": {"rich_text": _rt(line), "checked": False}})
+    props = {s["title"]: {"title": [{"text": {"content": title}}]}}
+    if s.get("date"):
+        props[s["date"]] = {"date": {"start": sessions[0]["start"].date().isoformat(), "end": sessions[-1]["start"].date().isoformat()}}
+    page = notion("POST", "/pages", {"parent": {"database_id": NOTION_DB}, "properties": props, "children": blocks[:100]})
+    for i in range(100, len(blocks), 100):              # Notion takes 100 blocks per request
+        notion("PATCH", "/blocks/%s/children" % page["id"], {"children": blocks[i:i + 100]})
+    return page
+
+
+def notion_plan_tasks(title, sessions):
+    s, made = schema(), 0
+    for x in sessions:
+        props = {s["title"]: {"title": [{"text": {"content": "%s: %s" % (title, x["title"])}}]}}
+        if s.get("date"):
+            props[s["date"]] = {"date": {"start": x["start"].isoformat(), "end": x["end"].isoformat()}}
+        notion("POST", "/pages", {"parent": {"database_id": NOTION_DB}, "properties": props})
+        made += 1
+        time.sleep(0.34)                                # stay under Notion's 3 requests/second
+    return made
+
+
+def save_plan(body):
+    title, summary, sessions = clean_plan(body.get("plan") or {})
+    plan_id = "hv-%d" % int(time.time())
+    result, errors = {"sessions": len(sessions)}, {}
+    if body.get("notionPage") and NOTION_TOKEN and NOTION_DB:
+        try:
+            page = notion_plan_page(title, summary, sessions)
+            result["notionUrl"] = page.get("url")
+        except urllib.error.HTTPError as e:
+            errors["notionPage"] = "Notion said %s: %s" % (e.code, e.read().decode()[:160])
+    if body.get("notionTasks") and NOTION_TOKEN and NOTION_DB:
+        try:
+            result["tasks"] = notion_plan_tasks(title, sessions)
+        except urllib.error.HTTPError as e:
+            errors["notionTasks"] = "Notion said %s: %s" % (e.code, e.read().decode()[:160])
+    if body.get("calendar") and calendar_writable():
+        made = 0
+        try:
+            for x in sessions:
+                calendar_add("%s: %s" % (title, x["title"]), x["details"], x["start"], x["end"], plan_id)
+                made += 1
+        except urllib.error.HTTPError as e:
+            errors["calendar"] = "Google said %s: %s" % (e.code, e.read().decode()[:160])
+        except Exception as e:
+            errors["calendar"] = str(e)[:200]
+        result["events"] = made
+    result["errors"] = errors
+    return result
+
+
 # ---------------------------------------------------------------- HTTP
 class Handler(BaseHTTPRequestHandler):
     server_version = "hermesville-tracker"
@@ -335,7 +488,8 @@ class Handler(BaseHTTPRequestHandler):
             q = dict(p.split("=", 1) for p in (self.path.split("?", 1)[1].split("&") if "?" in self.path else []) if "=" in p)
             days = max(1, min(31, int(q.get("days", "7"))))
             out, errors = {"now": dt.datetime.now(IST).isoformat(), "calendar": [], "notion": [], "notionName": None,
-                           "sources": {"calendar": bool(ICS_URLS), "notion": bool(NOTION_TOKEN and NOTION_DB)}}, {}
+                           "sources": {"calendar": bool(ICS_URLS), "notion": bool(NOTION_TOKEN and NOTION_DB),
+                                       "calendarWrite": calendar_writable()}}, {}
             if ICS_URLS:
                 try:
                     out["calendar"] = calendar(days)
@@ -353,6 +507,15 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
     def do_POST(self):
+        if self._path() == "/api/plan":
+            if not self._authed():
+                return
+            try:
+                return self._send(200, save_plan(self._body()))
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:200]})
         if self._path() != "/api/notion" or not self._authed():
             return self._send(404, {"error": "not found"}) if self._path() != "/api/notion" else None
         try:
