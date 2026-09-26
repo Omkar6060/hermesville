@@ -41,7 +41,6 @@
   .wrap { max-width: 1480px; margin: 0 auto; display: grid; gap: 18px; }
   .main { display: grid; gap: 18px; align-items: start; }
   .left { display: grid; gap: 18px; min-width: 0; }
-  @media (min-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr) 410px; } .cc { position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); } }
   canvas.hot { cursor: pointer; }
 
   header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; }
@@ -165,6 +164,67 @@
   .tbtn.pri { background: var(--t-green); color: #06120b; border-color: var(--t-green); }
   .tlink { color: var(--t-green); }
   @media (prefers-reduced-motion: reduce) { .online.wait, .dots::after { animation: none; } }
+
+  /* ---------- phone layout: one screen at a time + bottom tab bar ---------- */
+  /* ---------- app screens: City / Command / Agents, one at a time ---------- */
+  body { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+  body:not([data-tab="city"]) .controls { display: none; }
+  body[data-tab="city"] #cc, body[data-tab="city"] .roster, body[data-tab="city"] .note,
+  body[data-tab="cmd"] .left, body[data-tab="cmd"] .roster, body[data-tab="cmd"] .note,
+  body[data-tab="agents"] .left, body[data-tab="agents"] #cc { display: none; }
+  .cc { max-width: 620px; }
+  .rows { max-height: 52vh; }
+  .hint { display: none; }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: min(440px, calc(100% - 32px)); padding: 6px;
+    background: rgba(22, 27, 41, .94); border: 1px solid var(--line); border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .tabbar button {
+    position: relative; display: grid; justify-items: center; gap: 3px; padding: 8px 0 6px; min-height: 56px;
+    background: none; border: 0; border-radius: 14px; cursor: pointer; color: var(--muted); font: 700 12px var(--body); letter-spacing: .02em;
+  }
+  .tabbar button:hover { color: var(--text); }
+  .tabbar svg { width: 24px; height: 24px; }
+  .tabbar button[aria-selected="true"] { color: var(--sign); background: rgba(255, 200, 69, .1); }
+  .tabbar button:focus-visible { outline: 2px solid var(--go); outline-offset: -2px; }
+  .tabbar .dot { position: absolute; top: 8px; left: calc(50% + 10px); width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px #161b29; }
+  @media (max-width: 760px) {
+    body { padding-block: calc(12px + env(safe-area-inset-top, 0px)) calc(92px + env(safe-area-inset-bottom, 0px)); }
+    .rows { max-height: 46vh; }
+    .wrap { gap: 14px; }
+    header { align-items: center; gap: 10px; }
+    h1 { font-size: 30px; }
+    .sub { display: none; }
+    .controls { width: 100%; justify-content: space-between; gap: 8px; }
+    .clock { font-size: 20px; min-width: 0; }
+    .seg button { padding: 8px 11px; font-size: 12.5px; }
+    .play { padding: 8px 12px; }
+
+    canvas { min-width: 980px; }
+    .stage { border-radius: 12px; }
+    .scroller { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .scroller::-webkit-scrollbar { display: none; }
+    .hint { display: block; margin: -6px 0 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+    .tlhead { font-size: 12px; }
+
+    .cc { max-width: none; }
+    .device { padding: 8px; border-radius: 24px; }
+    .screen { padding: 16px 14px 14px; border-radius: 18px; gap: 12px; }
+    .rows { max-height: 46vh; }
+    #ccInput { font-size: 16px; }              /* stops iOS zooming into the box */
+    .send { padding: 12px 14px; }
+    .tile { padding: 12px; min-height: 64px; }
+    .base { width: 80%; padding: 10px 16px; }
+    .pwr { padding: 10px 14px; }
+
+    .roster { grid-template-columns: 1fr; gap: 10px; }
+
+    .tabbar { left: 0; right: 0; transform: none; bottom: 0; width: auto; border-radius: 0; border-width: 1px 0 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: none; }
+  }
 </style>
 </head>
 <body>
@@ -189,6 +249,7 @@
   <div class="left">
   <div class="stage"><div class="scroller"><canvas id="city" width="1280" height="540" aria-label="Animated cartoon city: Writers' Studio, Film Studio, Newsroom, Post Office and a construction lot for the next agent"></canvas></div></div>
 
+  <p class="hint">Swipe the town sideways · tap a building to talk to it</p>
   <div class="tlbox">
     <div class="tlhead"><span><b>Morning run</b> · 6:55 to 8:15 IST · click to jump</span><span><span class="src" id="src">Simulated</span> <span id="nextUp"></span></span></div>
     <div class="tl" id="tl" tabindex="0" role="slider" aria-label="Time of the morning run" aria-valuemin="415" aria-valuemax="495"></div>
@@ -218,6 +279,7 @@
           <label class="fld"><span>Telegram bot (optional)</span><input id="ccBot" type="text" placeholder="your_bot_username"></label>
           <div class="btns"><button class="tbtn pri" type="button" id="ccSave">Save + test</button><button class="tbtn" type="button" id="ccForget">Forget</button><button class="tbtn" type="button" id="ccClose">Close</button></div>
           <p id="ccSetupMsg"></p>
+          <p>App version 6 · type <code>/clear</code> to wipe a thread</p>
         </div>
 
         <div class="tiles" id="ccTiles" role="group" aria-label="Choose an agent"></div>
@@ -233,6 +295,18 @@
 
   <p class="note"><b>Tap a building</b> to talk to that agent in the command center. Building status comes from your server's <code>status.json</code> when it reports, and from the schedule otherwise.</p>
 </div>
+
+<nav class="tabbar" id="tabbar" role="tablist" aria-label="Screens">
+  <button type="button" role="tab" data-tab="city" aria-selected="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10h5v11M10 21V5h6v16M16 21v-8h3v8"/><path d="M12.5 8h1M12.5 11h1M12.5 14h1" stroke-linecap="round"/></svg>
+    City</button>
+  <button type="button" role="tab" data-tab="cmd" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 10l3 2-3 2M12 15h5"/></svg>
+    Command<span class="dot" id="cmdDot" hidden></span></button>
+  <button type="button" role="tab" data-tab="agents" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>
+    Agents</button>
+</nav>
 
 <script>
 (() => {
@@ -683,7 +757,7 @@
     const box = $("ccRows"); box.scrollTop = 0;
     renderTiles(); renderRows(); renderHead();
     if ((chats[id] || []).length) box.scrollTop = box.scrollHeight;
-    if (focus && window.innerWidth < 1100) $("cc").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+    if (focus) setTab("cmd");
   }
 
   // typing placeholder, like the reference terminal
@@ -737,12 +811,14 @@
       push(c.id, { r: "ai", t: reply || "(empty reply)" }); online = true;
     } catch (e) { push(c.id, { r: "ai", err: true, t: e.message }); if (/reach|Key/.test(e.message)) online = false; }
     delete pending[a.id]; renderRows(); renderTiles(); renderHead();
+    if (document.body.dataset.tab !== "cmd") $("cmdDot").hidden = false;
   }
 
   $("ccForm").addEventListener("submit", e => {
     e.preventDefault();
     const inp = $("ccInput"), text = inp.value.trim();
     if (!text || pending[cardFor(ccById[current]).id]) return;
+    if (text === "/clear") { inp.value = ""; delete chats[current]; store.set("chats", chats); renderRows(); return; }
     inp.value = ""; send(text);
   });
   $("ccTiles").addEventListener("click", e => { const t = e.target.closest(".tile"); if (t) select(t.dataset.id); });
@@ -777,6 +853,18 @@
   cv.addEventListener("mousemove", e => cv.classList.toggle("hot", !!hit(e)));
 
   setInterval(() => { renderTiles(); if (!document.activeElement || !$("ccRows").contains(document.activeElement)) renderRows(); }, 5000);
+  // phone screens
+  function phone() { return matchMedia("(max-width: 760px)").matches; }
+  function setTab(t) {
+    document.body.dataset.tab = t; store.set("tab", t);
+    document.querySelectorAll("#tabbar button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+    if (t === "cmd") $("cmdDot").hidden = true;
+    window.scrollTo(0, 0);
+    if (t === "city") requestAnimationFrame(fit);
+  }
+  $("tabbar").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab); });
+  setTab(store.get("tab", "city"));
+
   select(current); ping(); setInterval(ping, 120000);
 
   // ---------- controls ----------
