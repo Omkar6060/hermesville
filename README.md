@@ -63,6 +63,21 @@ bash server/enable_command_center.sh https://<username>.github.io
 
 Then tap **POWER** in the app and enter the URL and key the script prints. The key is stored only on that device.
 
+## My Tracking
+
+The **My Tracking** screen shows your Google Calendar (today, tomorrow or 7 days, with what's next) and a Notion database of notes and tasks. You can tick tasks off, add new ones, and send the day to Hermes to plan.
+
+`server/tracker.py` runs on the server (standard-library Python). It reads the calendar's secret iCal address and the Notion API, and serves them at `<funnel address>/tracking`, protected by the same API key as the command center. Neither the calendar address nor the Notion token ever leaves the server.
+
+```
+# in ~/.hermes/.env
+GCAL_ICS_URL=https://calendar.google.com/calendar/ical/.../basic.ics
+NOTION_TOKEN=ntn_...
+NOTION_DB_ID=<32-character database id>
+
+bash server/enable_tracking.sh
+```
+
 ## The reel video factory
 
 `automations/reel-video/` holds the pipeline behind the Film Studio.

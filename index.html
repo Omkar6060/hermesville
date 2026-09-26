@@ -56,8 +56,14 @@
   .play { font: 700 13px var(--body); color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
 
   .stage { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #0b1330; }
-  .scroller { overflow-x: auto; }
-  canvas { display: block; width: 100%; min-width: 760px; height: auto; aspect-ratio: 1280 / 540; }
+  .stage { position: relative; height: clamp(420px, calc(100vh - 300px), 900px); }
+  .scroller { height: 100%; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .mapbtns { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+  .mapbtns button { min-width: 40px; height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(28,34,51,.88); color: var(--text); font: 800 16px var(--body); cursor: pointer; }
+  .mapbtns #recenter { font-size: 13px; }
+  .mapbtns button:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
 
   .tlbox { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 10px; }
   .tlhead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
@@ -165,20 +171,69 @@
   .tlink { color: var(--t-green); }
   @media (prefers-reduced-motion: reduce) { .online.wait, .dots::after { animation: none; } }
 
+  /* ---------- My Tracking ---------- */
+  .track { display: grid; gap: 14px; width: 100%; max-width: 1040px; margin-inline: auto; }
+  .tk-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 16px; }
+  .tk-head h2 { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1; margin: 0; color: var(--text); letter-spacing: .3px; }
+  .tk-head p { margin: 4px 0 0; color: var(--muted); }
+  .tk-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .tk-next { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .tk-next .when { grid-row: span 2; font: 700 26px var(--mono); font-variant-numeric: tabular-nums; color: var(--sign); }
+  .tk-next .lbl { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--ok); }
+  .tk-next .ttl { font: 700 18px/1.3 var(--body); overflow-wrap: anywhere; }
+  .tk-cols { display: grid; gap: 14px; align-items: start; }
+  @media (min-width: 900px) { .tk-cols { grid-template-columns: 1.1fr 1fr; } }
+  .tk-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+  .tk-panel h3 { margin: 0; font: 800 12px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tk-panel h3 a { color: var(--go); text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 13px; }
+  .tk-day { font: 800 12px var(--body); color: var(--sign); margin-top: 6px; }
+  .ev { display: grid; grid-template-columns: 94px 1fr; gap: 12px; padding: 10px 10px; border-radius: 10px; background: var(--panel-2); border-left: 3px solid transparent; }
+  .ev .tm { font: 600 13px var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+  .ev .t { font-weight: 700; overflow-wrap: anywhere; }
+  .ev .m { font-size: 12.5px; color: var(--muted); }
+  .ev.now { border-left-color: var(--ok); background: rgba(79,209,139,.1); }
+  .ev.now .tm { color: var(--ok); }
+  .ev.past { opacity: .5; }
+  .todo { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 8px 8px; border-radius: 10px; background: var(--panel-2); }
+  .todo .ck { width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--idle); background: transparent; cursor: pointer; color: #06120b; font: 900 15px var(--body); display: grid; place-items: center; }
+  .todo .ck[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); }
+  .todo .t { font-weight: 600; overflow-wrap: anywhere; }
+  .todo.done .t { text-decoration: line-through; color: var(--muted); }
+  .todo .due { font: 700 11px var(--mono); padding: 3px 7px; border-radius: 999px; background: rgba(138,147,173,.16); color: var(--idle); white-space: nowrap; }
+  .todo .due.today { background: rgba(255,200,69,.16); color: var(--sign); }
+  .todo .due.late { background: rgba(255,107,91,.16); color: #ff6b5b; }
+  .todo a { color: var(--go); font-size: 13px; text-decoration: none; padding: 4px; }
+  .tk-add { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+  .tk-add input { min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font: 500 15px var(--body); padding: 10px 12px; }
+  .tk-add input[type="date"] { width: 150px; color-scheme: dark; }
+  .tk-add input:focus { outline: 2px solid var(--go); outline-offset: 1px; }
+  .tk-btn { font: 800 13px var(--body); border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; background: var(--sign); color: #2a2206; }
+  .tk-btn.alt { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+  .tk-btn:focus-visible, .todo .ck:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+  .tk-err { font-size: 13px; color: #ff6b5b; margin: 0; }
+  .tk-empty { font-size: 14px; color: var(--muted); margin: 0; }
+  .tk-setup { background: transparent; border: 1px dashed var(--sign); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
+  .tk-setup b { color: var(--sign); }
+  .tk-setup p, .tk-setup ol { margin: 0; color: var(--muted); font-size: 14px; }
+  .tk-setup ol { padding-left: 20px; display: grid; gap: 4px; }
+  .tk-setup code { color: var(--text); }
+  @media (max-width: 520px) { .tk-add { grid-template-columns: 1fr auto; } #tkNew { grid-column: 1 / -1; } .tk-add input[type="date"] { width: 100%; } .ev { grid-template-columns: 78px 1fr; } }
+
   /* ---------- phone layout: one screen at a time + bottom tab bar ---------- */
   /* ---------- app screens: City / Command / Agents, one at a time ---------- */
   body { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
   body:not([data-tab="city"]) .controls { display: none; }
-  body[data-tab="city"] #cc, body[data-tab="city"] .roster, body[data-tab="city"] .note,
-  body[data-tab="cmd"] .left, body[data-tab="cmd"] .roster, body[data-tab="cmd"] .note,
-  body[data-tab="agents"] .left, body[data-tab="agents"] #cc { display: none; }
+  body[data-tab="city"] #cc, body[data-tab="city"] .roster, body[data-tab="city"] .note, body[data-tab="city"] #track,
+  body[data-tab="cmd"] .left, body[data-tab="cmd"] .roster, body[data-tab="cmd"] .note, body[data-tab="cmd"] #track,
+  body[data-tab="track"] .left, body[data-tab="track"] #cc, body[data-tab="track"] .roster, body[data-tab="track"] .note,
+  body[data-tab="agents"] .left, body[data-tab="agents"] #cc, body[data-tab="agents"] #track { display: none; }
   .cc { max-width: 620px; }
   .rows { max-height: 52vh; }
   .hint { display: none; }
   .tabbar {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
     position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    width: min(440px, calc(100% - 32px)); padding: 6px;
+    width: min(560px, calc(100% - 32px)); padding: 6px;
     background: rgba(22, 27, 41, .94); border: 1px solid var(--line); border-radius: 20px;
     box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
@@ -192,7 +247,7 @@
   .tabbar button[aria-selected="true"] { color: var(--sign); background: rgba(255, 200, 69, .1); }
   .tabbar button:focus-visible { outline: 2px solid var(--go); outline-offset: -2px; }
   .tabbar .dot { position: absolute; top: 8px; left: calc(50% + 10px); width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px #161b29; }
-  @media (max-width: 760px) {
+  @media (max-width: 760px), (pointer: coarse) and (max-width: 1180px) {
     body { padding-block: calc(12px + env(safe-area-inset-top, 0px)) calc(92px + env(safe-area-inset-bottom, 0px)); }
     .rows { max-height: 46vh; }
     .wrap { gap: 14px; }
@@ -204,10 +259,7 @@
     .seg button { padding: 8px 11px; font-size: 12.5px; }
     .play { padding: 8px 12px; }
 
-    canvas { min-width: 980px; }
-    .stage { border-radius: 12px; }
-    .scroller { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-    .scroller::-webkit-scrollbar { display: none; }
+    .stage { border-radius: 12px; height: max(360px, calc(100dvh - 300px - env(safe-area-inset-bottom, 0px))); }
     .hint { display: block; margin: -6px 0 0; font-size: 12.5px; color: var(--muted); text-align: center; }
     .tlhead { font-size: 12px; }
 
@@ -247,9 +299,10 @@
 
   <div class="main">
   <div class="left">
-  <div class="stage"><div class="scroller"><canvas id="city" width="1280" height="540" aria-label="Animated cartoon city: Writers' Studio, Film Studio, Newsroom, Post Office and a construction lot for the next agent"></canvas></div></div>
+  <div class="stage"><div class="scroller"><canvas id="city" aria-label="Isometric city of your agents: Hermes HQ, Writers' Studio, Film Studio, Newsroom, Post Office and a construction lot for the next agent. Drag to move, pinch or scroll to zoom, tap a building to talk to it."></canvas></div>
+    <div class="mapbtns"><button type="button" id="zoomIn" aria-label="Zoom in">+</button><button type="button" id="zoomOut" aria-label="Zoom out">−</button><button type="button" id="recenter">Center</button></div></div>
 
-  <p class="hint">Swipe the town sideways · tap a building to talk to it</p>
+  <p class="hint">Drag to move · pinch to zoom · tap a building to talk to it</p>
   <div class="tlbox">
     <div class="tlhead"><span><b>Morning run</b> · 6:55 to 8:15 IST · click to jump</span><span><span class="src" id="src">Simulated</span> <span id="nextUp"></span></span></div>
     <div class="tl" id="tl" tabindex="0" role="slider" aria-label="Time of the morning run" aria-valuemin="415" aria-valuemax="495"></div>
@@ -279,7 +332,7 @@
           <label class="fld"><span>Telegram bot (optional)</span><input id="ccBot" type="text" placeholder="your_bot_username"></label>
           <div class="btns"><button class="tbtn pri" type="button" id="ccSave">Save + test</button><button class="tbtn" type="button" id="ccForget">Forget</button><button class="tbtn" type="button" id="ccClose">Close</button></div>
           <p id="ccSetupMsg"></p>
-          <p>App version 6 · type <code>/clear</code> to wipe a thread</p>
+          <p>App version 8 · type <code>/clear</code> to wipe a thread</p>
         </div>
 
         <div class="tiles" id="ccTiles" role="group" aria-label="Choose an agent"></div>
@@ -290,6 +343,41 @@
     <div class="base"><div class="vents"><i></i><i></i><i></i><i></i></div><button class="pwr" type="button" id="ccPower" aria-label="Server connection settings">POWER</button><span class="led" id="ccLed"></span></div>
   </aside>
   </div>
+
+  <section class="track" id="track" aria-label="My Tracking">
+    <div class="tk-head">
+      <div><h2>My Tracking</h2><p id="tkDate">Today</p></div>
+      <div class="tk-actions">
+        <span class="src" id="tkSrc">Example</span>
+        <div class="seg" role="group" aria-label="Range">
+          <button type="button" data-range="0" aria-pressed="true">Today</button>
+          <button type="button" data-range="1" aria-pressed="false">Tomorrow</button>
+          <button type="button" data-range="7" aria-pressed="false">7 days</button>
+        </div>
+        <button type="button" class="play" id="tkRefresh">Refresh</button>
+      </div>
+    </div>
+    <div class="tk-setup" id="tkSetup" hidden></div>
+    <div class="tk-next" id="tkNext"></div>
+    <div class="tk-cols">
+      <div class="tk-panel">
+        <h3><span>Schedule · Google Calendar</span></h3>
+        <p class="tk-err" id="tkCalErr" hidden></p>
+        <div id="tkCal" style="display:grid;gap:8px"></div>
+        <button type="button" class="tk-btn alt" id="tkPlan">Plan my day with Hermes</button>
+      </div>
+      <div class="tk-panel">
+        <h3><span id="tkNotionName">Notes · Notion</span><a id="tkNotionLink" href="https://www.notion.so" target="_blank" rel="noopener">Open Notion ↗</a></h3>
+        <form class="tk-add" id="tkAdd" autocomplete="off">
+          <input id="tkNew" type="text" placeholder="Add a note or task" aria-label="New note or task">
+          <input id="tkDue" type="date" aria-label="Due date (optional)">
+          <button class="tk-btn" type="submit">Add</button>
+        </form>
+        <p class="tk-err" id="tkNotionErr" hidden></p>
+        <div id="tkNotes" style="display:grid;gap:8px"></div>
+      </div>
+    </div>
+  </section>
 
   <section class="roster" id="roster" aria-label="Agents"></section>
 
@@ -303,6 +391,9 @@
   <button type="button" role="tab" data-tab="cmd" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 10l3 2-3 2M12 15h5"/></svg>
     Command<span class="dot" id="cmdDot" hidden></span></button>
+  <button type="button" role="tab" data-tab="track" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8.5 15l2.2 2.2L15.5 13"/></svg>
+    My Tracking</button>
   <button type="button" role="tab" data-tab="agents" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>
     Agents</button>
@@ -382,14 +473,12 @@
   }
   const fmt = t => { t = ((t % 1440) + 1440) % 1440; const h = Math.floor(t / 60), m = Math.floor(t % 60); return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0"); };
 
-  // ---------- canvas ----------
+  // ---------- isometric city ----------
   const cv = document.getElementById("city"), ctx = cv.getContext("2d");
-  function fit() {
-    const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
-    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.width * dpr * H / W);
-    ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
-  }
-  new ResizeObserver(fit).observe(cv);
+  const TW = 64, TH = 32, N = 31, BLK = 5;                    // tiles; a road every 5 tiles
+  const isRoad = (i, j) => i % BLK === 0 || j % BLK === 0;
+  const P = (i, j, z = 0) => [(i - j) * TW / 2, (i + j) * TH / 2 - z];
+  let cw = 800, ch = 500, dpr = 1;
 
   const lerp = (a, b, k) => a + (b - a) * k;
   const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -406,180 +495,277 @@
     return [SKY[0][1], SKY[0][2]];
   }
   const darkness = h => (h < 6 || h > 19.5) ? 1 : h < 7 ? 1 - (h - 6) : h > 18.3 ? (h - 18.3) / 1.2 : 0;
+  // night shading, memoised per colour + darkness step
+  const NIGHT = "#141a33", shadeMemo = new Map();
+  let dkStep = 0;
+  function sh(c) { const key = c + dkStep; let v = shadeMemo.get(key); if (!v) { v = dkStep ? mix(c, NIGHT, dkStep * 0.06) : c; shadeMemo.set(key, v); } return v; }
 
-  // fixed random details
-  const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(42);
-  const STARS = Array.from({ length: 90 }, () => [rnd() * W, rnd() * 260, rnd() * 1.4 + .4, rnd() * 6]);
-  const SKYLINE = Array.from({ length: 26 }, (_, i) => [i * 52 - 10, 70 + rnd() * 120, 40 + rnd() * 20]);
-  const CLOUDS = Array.from({ length: 5 }, () => [rnd() * W, 50 + rnd() * 120, .6 + rnd() * .6]);
+  const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);
+  const pick = a => a[Math.floor(rnd() * a.length)];
 
-  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+  // ---------- town layout ----------
+  const LM = { // agent landmarks: block (bi, bj) of the 6×6 block grid
+    writer: { block: [1, 2], h: 120, body: "#ff8a5b", side: "#d9663d", roof: "#c9563a", name: "Writers' Studio" },
+    film:   { block: [2, 1], h: 104, body: "#7a6cf0", side: "#5d50d0", roof: "#4a3fb3", name: "Film Studio" },
+    news:   { block: [3, 2], h: 176, body: "#2fb3a3", side: "#218a7d", roof: "#1b7a6f", name: "Newsroom" },
+    post:   { block: [2, 3], h: 78,  body: "#f2c14e", side: "#d4a232", roof: "#c0392b", name: "Post Office", pyramid: true },
+    hq:     { block: [2, 2], h: 200, body: "#2d3a58", side: "#222c45", roof: "#5fd08a", name: "Hermes HQ" },
+  };
+  const LOT_BLOCK = [3, 3], PLAZA_BLOCK = [1, 1];
+  const PAL = {
+    tower: { body: "#56617c", side: "#434c63", roof: "#6b7792", win: "#a9c3dd" },
+    glass: { body: "#3f6e8c", side: "#305670", roof: "#5a8aa8", win: "#bfe0f2" },
+    brick: { body: "#9a4f3c", side: "#7a3d2e", roof: "#5e3226", win: "#e8c9a0" },
+  };
+  const HOUSE_ROOFS = ["#c95b5b", "#3f9b86", "#d9a441", "#6a78d1", "#b8577f"];
+  const buildings = [], trees = [], lmById = {};
 
-  function drawSky(t, now) {
-    const h = t / 60, [top, bot] = sky(h), g = ctx.createLinearGradient(0, 0, 0, GROUND);
-    g.addColorStop(0, top); g.addColorStop(1, bot); ctx.fillStyle = g; ctx.fillRect(0, 0, W, GROUND);
-    const dk = darkness(h);
-    if (dk > 0) STARS.forEach(([x, y, r, p]) => { ctx.globalAlpha = dk * (.5 + .5 * Math.sin(now / 700 + p)); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); });
-    ctx.globalAlpha = 1;
-    // sun 6:00→18:30 arc, moon otherwise
-    const day = (h - 6) / 12.5;
-    if (day > -0.05 && day < 1.05) {
-      const sx = lerp(80, W - 80, day), sy = 330 - Math.sin(Math.PI * Math.min(1, Math.max(0, day))) * 270;
-      ctx.fillStyle = "rgba(255,214,110,.25)"; ctx.beginPath(); ctx.arc(sx, sy, 46, 0, 7); ctx.fill();
-      ctx.fillStyle = "#ffd66e"; ctx.beginPath(); ctx.arc(sx, sy, 30, 0, 7); ctx.fill();
-    } else {
-      ctx.fillStyle = "#f3f1ea"; ctx.beginPath(); ctx.arc(1060, 80, 22, 0, 7); ctx.fill();
-      ctx.fillStyle = top; ctx.beginPath(); ctx.arc(1070, 74, 20, 0, 7); ctx.fill();
+  function addBox(o) { o.seed = Math.floor(rnd() * 1e6); buildings.push(o); return o; }
+  for (let bi = 0; bi < 6; bi++) for (let bj = 0; bj < 6; bj++) {
+    const ox = bi * BLK + 1, oy = bj * BLK + 1;
+    const lmId = Object.keys(LM).find(k => LM[k].block[0] === bi && LM[k].block[1] === bj);
+    if (lmId) {
+      const L = LM[lmId];
+      lmById[lmId] = addBox({ i: ox, j: oy, fw: 3, fd: 3, h: L.h, kind: "lm", id: lmId, body: L.body, side: L.side, roof: L.roof, pyramid: L.pyramid, win: "#cfe3f5" });
+      trees.push([ox + 3.5, oy + 0.5], [ox + 3.5, oy + 2.5], [ox + 0.5, oy + 3.5], [ox + 2.5, oy + 3.5]);
+      continue;
     }
-    // clouds drift
-    ctx.fillStyle = dk > .5 ? "rgba(160,170,210,.18)" : "rgba(255,255,255,.85)";
-    CLOUDS.forEach(([x, y, s]) => {
-      const cx = ((x + now / 90 * s) % (W + 200)) - 100;
-      [[0, 0, 26], [24, -10, 30], [52, 0, 24], [26, 6, 26]].forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.arc(cx + dx * s, y + dy * s, r * s, 0, 7); ctx.fill(); });
-    });
-    // far skyline
-    ctx.fillStyle = mix("#3a4a7a", "#141b38", dk);
-    SKYLINE.forEach(([x, hh, w]) => ctx.fillRect(x, GROUND - hh, w, hh));
-    if (dk > .3) { ctx.fillStyle = `rgba(255,216,107,${.5 * dk})`; SKYLINE.forEach(([x, hh, w], i) => { for (let k = 0; k < 4; k++) if ((i + k) % 3 === 0) ctx.fillRect(x + 8 + (k % 2) * 18, GROUND - hh + 14 + k * 22, 7, 9); }); }
+    if (bi === LOT_BLOCK[0] && bj === LOT_BLOCK[1]) continue;               // construction lot, drawn separately
+    if (bi === PLAZA_BLOCK[0] && bj === PLAZA_BLOCK[1]) {                    // plaza with trees
+      trees.push([ox + 0.5, oy + 0.5], [ox + 3.5, oy + 0.5], [ox + 0.5, oy + 3.5], [ox + 3.5, oy + 3.5]);
+      continue;
+    }
+    const central = Math.abs(bi - 2) <= 1 && Math.abs(bj - 2) <= 1;
+    for (let qi = 0; qi < 2; qi++) for (let qj = 0; qj < 2; qj++) {
+      const i = ox + qi * 2, j = oy + qj * 2, r = rnd();
+      if (r < (central ? 0.36 : 0.28)) addBox({ i, j, fw: 2, fd: 2, h: 70 + rnd() * (central ? 60 : 90), kind: "tower", ...(rnd() < .35 ? PAL.glass : PAL.tower) });
+      else if (r < 0.62) addBox({ i, j, fw: 2, fd: 2, h: 42 + rnd() * 36, kind: "brick", ...PAL.brick });
+      else if (r < 0.82) {
+        const roof = pick(HOUSE_ROOFS);
+        addBox({ i, j, fw: 1, fd: 2, h: 26 + rnd() * 10, kind: "house", body: "#e8dccb", side: "#cbbfae", roof, pyramid: true, win: "#8fb3d1" });
+        addBox({ i: i + 1, j, fw: 1, fd: 2, h: 22 + rnd() * 12, kind: "house", body: "#efe5d6", side: "#d3c7b6", roof: pick(HOUSE_ROOFS), pyramid: true, win: "#8fb3d1" });
+      } else trees.push([i + 0.5, j + 0.5], [i + 1.5, j + 1.3], [i + 1.2, j + 0.4]);
+    }
   }
-
-  function drawStreet(dk) {
-    ctx.fillStyle = mix("#b8b3a6", "#4a4f63", dk); ctx.fillRect(0, GROUND, W, 20);           // sidewalk
-    ctx.fillStyle = mix("#8f8a7e", "#393d4f", dk); ctx.fillRect(0, GROUND + 20, W, 3);
-    ctx.fillStyle = mix("#4b5063", "#23273a", dk); ctx.fillRect(0, GROUND + 23, W, 70);        // road
-    ctx.fillStyle = mix("#f3e7b0", "#b8ad7a", dk);
-    for (let x = 10; x < W; x += 60) ctx.fillRect(x, GROUND + 56, 32, 4);
-    ctx.fillStyle = mix("#6fbf5e", "#2c4a35", dk); ctx.fillRect(0, GROUND + 93, W, H - GROUND - 93); // verge
+  const LOTX = LOT_BLOCK[0] * BLK + 1, LOTY = LOT_BLOCK[1] * BLK + 1;
+  const parkTile = new Set();
+  for (let bi = 0; bi < 6; bi++) for (let bj = 0; bj < 6; bj++) {
+    const ox = bi * BLK + 1, oy = bj * BLK + 1;
+    for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) parkTile.add((ox + a) + "," + (oy + b));
   }
+  buildings.forEach(b => { for (let a = 0; a < b.fw; a++) for (let c = 0; c < b.fd; c++) parkTile.delete((b.i + a) + "," + (b.j + c)); });
+  for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) parkTile.delete((LOTX + a) + "," + (LOTY + b));
 
-  function windows(a, lit, dk, now, busy) {
-    const cols = Math.max(2, Math.floor((a.w - 40) / 44)), rows = Math.max(2, Math.floor((a.h - 110) / 46));
-    const gx = (a.w - 30 - cols * 30) / (cols - 1 || 1);
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      const x = a.x + 15 + c * (30 + gx), y = GROUND - a.h + 58 + r * 46;
-      const on = busy || (dk > .4 && (r + c + a.x) % 3 !== 0);
-      ctx.fillStyle = on ? "#ffd86b" : mix("#bcdcf2", "#28324f", dk);
-      rr(x, y, 30, 30, 4); ctx.fill();
-      if (busy && (r + c) % 2 === 0) { // a worker's head bobbing at the desk
-        const b = Math.sin(now / 160 + r * 2 + c) * 2;
-        ctx.fillStyle = "#4a3a2e"; ctx.beginPath(); ctx.arc(x + 15, y + 17 + b, 7, 0, 7); ctx.fill();
-        ctx.fillStyle = a.body; ctx.fillRect(x + 7, y + 24 + b, 16, 6);
+  // front road tile of a landmark (the street below its block)
+  const front = id => { const [bi, bj] = LM[id].block; return [bi * BLK + 2, bj * BLK + 5]; };
+
+  // ---------- road paths for couriers (BFS) ----------
+  function path(a, b) {
+    const key = x => x[0] + "," + x[1], prev = new Map([[key(a), null]]), q = [a];
+    while (q.length) {
+      const c = q.shift(); if (c[0] === b[0] && c[1] === b[1]) break;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = [c[0] + di, c[1] + dj];
+        if (n[0] < 0 || n[1] < 0 || n[0] >= N || n[1] >= N || !isRoad(n[0], n[1]) || prev.has(key(n))) continue;
+        prev.set(key(n), c); q.push(n);
       }
-      ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 2; rr(x, y, 30, 30, 4); ctx.stroke();
+    }
+    const out = []; let c = b; while (c) { out.unshift(c); c = prev.get(key(c)); } return out;
+  }
+  const ROUTES = {};
+  workers.forEach(a => { ROUTES[a.id] = path(front(a.id), front(a.to)); });
+  function along(pts, k) {
+    const seg = Math.max(1, pts.length - 1), f = Math.min(seg - 1e-6, Math.max(0, k * seg)), n = Math.floor(f), r = f - n;
+    const A = pts[n], B = pts[Math.min(n + 1, pts.length - 1)];
+    return [lerp(A[0], B[0], r) + .5, lerp(A[1], B[1], r) + .5, B[0] - A[0], B[1] - A[1]];
+  }
+
+  // ---------- residents and cars ----------
+  const NAMES = ["Nova", "Pip", "Juno", "Kai", "Mo", "Zed", "Ivy", "Rex", "Lumi", "Taro", "Vega", "Bo", "Sage", "Remy", "Ori", "Tess", "Quin", "Yuki", "Fen", "Dot", "Ash", "Milo", "Cleo", "Beau", "Rin", "Lux", "Nell", "Arlo", "Wren", "Ezra"];
+  const CHAT = ["coffee first", "shipping it", "any updates?", "on my way", "gm", "lunch?", "rerun it", "looks good", "back in 5", "nice weather", "who's on call?", "deploying…", "ping me", "almost done", "great reel today"];
+  const BLOBS = ["#ff9aa8", "#8fd3ff", "#b79cff", "#ffd36b", "#8ee6b6", "#ffb37a", "#7fb2ff", "#f59bd8"];
+  const roadTiles = []; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (isRoad(i, j)) roadTiles.push([i, j]);
+  const walkers = Array.from({ length: 46 }, (_, n) => {
+    const s = pick(roadTiles);
+    return { i: s[0], j: s[1], ti: s[0], tj: s[1], k: 1, sp: .7 + rnd() * .6, c: pick(BLOBS), name: NAMES[n % NAMES.length],
+      ox: (rnd() - .5) * .5, oy: (rnd() - .5) * .5, say: "", sayUntil: 0, nextSay: 2000 + rnd() * 14000 };
+  });
+  function stepWalker(w, dt, now) {
+    w.k += dt * w.sp;
+    if (w.k >= 1) {
+      w.i = w.ti; w.j = w.tj; w.k = 0;
+      const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [w.i + a, w.j + b]).filter(([a, b]) => a >= 0 && b >= 0 && a < N && b < N && isRoad(a, b));
+      const fwd = opts.filter(([a, b]) => !(a === w.pi && b === w.pj));
+      const n = pick(fwd.length && rnd() < .85 ? fwd : opts); w.pi = w.i; w.pj = w.j; w.ti = n[0]; w.tj = n[1];
+    }
+    if (now > w.nextSay) { w.say = pick(CHAT); w.sayUntil = now + 2600; w.nextSay = now + 7000 + rnd() * 16000; }
+  }
+  const CAR_COLS = ["#e84d4d", "#f2c14e", "#4d9be8", "#ececec", "#3fbf7f", "#ff8a3d", "#8a5cf0"];
+  const cars = Array.from({ length: 18 }, () => {
+    const line = Math.floor(rnd() * 7) * BLK;
+    return { axis: rnd() < .5 ? "i" : "j", line, pos: rnd() * N, dir: rnd() < .5 ? 1 : -1, sp: 1.6 + rnd() * 1.4, c: pick(CAR_COLS) };
+  });
+
+  // ---------- camera ----------
+  const cam = { x: 0, y: 0, z: 1 };
+  let camTarget = null, lastUser = 0, camReady = false;
+  const worldToScreen = (x, y) => [(x - cam.x) * cam.z + cw / 2, (y - cam.y) * cam.z + ch / 2];
+  const screenToWorld = (x, y) => [(x - cw / 2) / cam.z + cam.x, (y - ch / 2) / cam.z + cam.y];
+  function lmCenter(id) { const b = lmById[id]; return P(b.i + b.fw / 2, b.j + b.fd / 2, b.h * .45); }
+  function clampCam() {
+    const hw = N * TW / 2;
+    cam.x = Math.max(-hw, Math.min(hw, cam.x)); cam.y = Math.max(-200, Math.min(N * TH, cam.y));
+    cam.z = Math.max(.35, Math.min(2.4, cam.z));
+  }
+  function homeCam() {
+    const c = lmCenter("hq"); cam.x = c[0]; cam.y = c[1] + 40;
+    cam.z = Math.max(.5, Math.min(1.1, Math.min(cw / 1250, ch / 820)));
+  }
+  function focusOn(id) { if (Date.now() - lastUser < 9000 || !lmById[id]) return; const c = lmCenter(id); camTarget = { x: c[0], y: c[1] }; }
+
+  function fit() {
+    const r = cv.getBoundingClientRect(); if (!r.width || !r.height) return;
+    dpr = Math.min(2, window.devicePixelRatio || 1); cw = r.width; ch = r.height;
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    if (!camReady) { homeCam(); camReady = true; }
+  }
+  new ResizeObserver(fit).observe(cv);
+
+  // ---------- ground (cached image, redrawn when the light changes) ----------
+  const GX0 = -N * TW / 2 - 40, GY0 = -30, GW = N * TW + 80, GH = N * TH + 60, GS = 1.5;
+  const ground = document.createElement("canvas"); ground.width = GW * GS; ground.height = GH * GS;
+  let groundStep = -1;
+  function paintGround() {
+    const g = ground.getContext("2d");
+    g.setTransform(GS, 0, 0, GS, -GX0 * GS, -GY0 * GS); g.clearRect(GX0, GY0, GW, GH);
+    const tile = (i, j, col) => { const a = P(i, j), b = P(i + 1, j), c = P(i + 1, j + 1), d = P(i, j + 1); g.fillStyle = col; g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.lineTo(...c); g.lineTo(...d); g.closePath(); g.fill(); };
+    // island edge
+    const e0 = P(0, 0), e1 = P(N, 0), e2 = P(N, N), e3 = P(0, N);
+    g.fillStyle = sh("#2c3348"); g.beginPath(); g.moveTo(e3[0], e3[1]); g.lineTo(e2[0], e2[1]); g.lineTo(e2[0], e2[1] + 18); g.lineTo(e3[0], e3[1] + 18); g.closePath(); g.fill();
+    g.fillStyle = sh("#232a3d"); g.beginPath(); g.moveTo(e2[0], e2[1]); g.lineTo(e1[0], e1[1]); g.lineTo(e1[0], e1[1] + 18); g.lineTo(e2[0], e2[1] + 18); g.closePath(); g.fill();
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      if (isRoad(i, j)) tile(i, j, sh((i + j) % 2 ? "#3d4358" : "#3a4055"));
+      else if (i >= LOTX && i < LOTX + 4 && j >= LOTY && j < LOTY + 4) tile(i, j, sh("#b08a5a"));
+      else if (parkTile.has(i + "," + j)) tile(i, j, sh((i + j) % 2 ? "#6cbc5d" : "#66b457"));
+      else tile(i, j, sh((i + j) % 2 ? "#bdb6a6" : "#b5ae9e"));
+    }
+    // lane dashes
+    g.strokeStyle = sh("#e9dd9a"); g.lineWidth = 1.6;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      if (!isRoad(i, j) || (i % BLK === 0 && j % BLK === 0)) continue;
+      const [a, b] = i % BLK === 0 ? [P(i + .5, j + .3), P(i + .5, j + .7)] : [P(i + .3, j + .5), P(i + .7, j + .5)];
+      g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke();
+    }
+    // plaza fountain
+    const [px, py] = P(PLAZA_BLOCK[0] * BLK + 3, PLAZA_BLOCK[1] * BLK + 3);
+    g.fillStyle = sh("#9fb2c8"); g.beginPath(); g.ellipse(px, py, 34, 17, 0, 0, 7); g.fill();
+    g.fillStyle = sh("#5bb6ff"); g.beginPath(); g.ellipse(px, py, 26, 13, 0, 0, 7); g.fill();
+    groundStep = dkStep;
+  }
+
+  // ---------- drawing ----------
+  function poly(pts, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]); ctx.closePath(); ctx.fill(); }
+  const up = (p, h) => [p[0], p[1] - h];
+  function winRows(p0, p1, h, lit, day, seed, dash) {
+    ctx.lineWidth = 5; ctx.setLineDash(dash); const floors = Math.floor((h - 14) / 15);
+    for (let f = 0; f < floors; f++) {
+      const z = 14 + f * 15, on = lit === 2 || (lit === 1 && ((seed >> (f % 20)) & 1));
+      ctx.strokeStyle = on ? "#ffd86b" : day; ctx.beginPath();
+      ctx.moveTo(lerp(p0[0], p1[0], .12), lerp(p0[1], p1[1], .12) - z); ctx.lineTo(lerp(p0[0], p1[0], .88), lerp(p0[1], p1[1], .88) - z); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+  function drawBox(b, st, dk, now) {
+    const A = P(b.i, b.j), B = P(b.i + b.fw, b.j), C = P(b.i + b.fw, b.j + b.fd), D = P(b.i, b.j + b.fd), h = b.h;
+    poly([D, C, up(C, h), up(D, h)], sh(b.body));
+    poly([C, B, up(B, h), up(C, h)], sh(b.side));
+    const busy = st === "working" || st === "sending";
+    const lit = busy ? 2 : dk > .35 ? 1 : 0, day = sh(b.win || "#a9c3dd");
+    if (b.kind !== "house") {
+      winRows(D, C, h, lit, day, b.seed, b.kind === "brick" ? [4, 6] : [6, 5]);
+      winRows(C, B, h, lit, sh(mix(b.win || "#a9c3dd", "#000000", .15)), b.seed >> 3, b.kind === "brick" ? [4, 6] : [6, 5]);
+    } else {
+      ctx.fillStyle = dk > .35 ? "#ffd86b" : day;
+      const m = [lerp(D[0], C[0], .5), lerp(D[1], C[1], .5) - h * .55]; ctx.fillRect(m[0] - 3, m[1] - 3, 6, 6);
+    }
+    if (b.pyramid) {
+      const apex = P(b.i + b.fw / 2, b.j + b.fd / 2, h + (b.kind === "lm" ? 46 : 18));
+      poly([up(D, h), up(C, h), apex], sh(b.roof)); poly([up(C, h), up(B, h), apex], sh(mix(b.roof, "#000000", .22)));
+      poly([up(A, h), up(D, h), apex], sh(mix(b.roof, "#ffffff", .08)));
+    } else poly([up(A, h), up(B, h), up(C, h), up(D, h)], sh(b.roof));
+    if (b.kind === "lm") {
+      // door
+      const d0 = [lerp(D[0], C[0], .42), lerp(D[1], C[1], .42)], d1 = [lerp(D[0], C[0], .58), lerp(D[1], C[1], .58)];
+      poly([d0, d1, up(d1, 22), up(d0, 22)], "#3a2a22");
+      roofProps(b, st, now);
     }
   }
-
-  function sign(a, text) {
-    ctx.font = "22px 'Lilita One', 'Trebuchet MS', sans-serif";
-    const tw = ctx.measureText(text).width, sw = tw + 26, sx = a.x + (a.w - sw) / 2, sy = GROUND - a.h + 12;
-    ctx.fillStyle = "#1c2233"; rr(sx, sy, sw, 34, 8); ctx.fill();
-    ctx.fillStyle = "#ffc845"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, sx + sw / 2, sy + 18);
-  }
-
-  function building(a, t, dk, now) {
-    const st = effStatus(a, t), busy = st === "working" || (a.id === "post" && st === "sending");
-    const top = GROUND - a.h;
-    // side depth
-    ctx.fillStyle = a.roof; ctx.fillRect(a.x + a.w, top + 10, 14, a.h - 10);
-    ctx.fillStyle = a.body; ctx.fillRect(a.x, top, a.w, a.h);
-    ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(a.x, top, a.w, 6);
-
-    // roofs and props
-    if (a.id === "writer") { // chimney with paper puffs
-      ctx.fillStyle = a.roof; ctx.fillRect(a.x + a.w - 60, top - 36, 26, 36);
-      if (busy) for (let i = 0; i < 4; i++) { const k = ((now / 900) + i / 4) % 1; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#fff"; ctx.save(); ctx.translate(a.x + a.w - 47 + Math.sin(k * 6 + i) * 10, top - 40 - k * 70); ctx.rotate(k * 3 + i); ctx.fillRect(-7, -9, 14, 18); ctx.restore(); }
+  function roofProps(b, st, now) {
+    const busy = st === "working" || st === "sending", top = P(b.i + b.fw / 2, b.j + b.fd / 2, b.h);
+    if (b.id === "hq") {
+      ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(top[0], top[1] - 46); ctx.stroke();
+      const glow = .55 + .45 * Math.sin(now / (busy ? 160 : 600));
+      ctx.fillStyle = `rgba(95,208,138,${.25 * glow})`; ctx.beginPath(); ctx.arc(top[0], top[1] - 48, 18, 0, 7); ctx.fill();
+      ctx.fillStyle = "#5fd08a"; ctx.beginPath(); ctx.arc(top[0], top[1] - 48, 6, 0, 7); ctx.fill();
+    }
+    if (b.id === "writer") {
+      poly([P(b.i + 2.2, b.j + .4, b.h), P(b.i + 2.7, b.j + .4, b.h), P(b.i + 2.7, b.j + .4, b.h + 30), P(b.i + 2.2, b.j + .4, b.h + 30)], "#8e3a26");
+      if (busy) for (let n = 0; n < 4; n++) { const k = ((now / 900) + n / 4) % 1, c = P(b.i + 2.45, b.j + .4, b.h + 34 + k * 70); ctx.globalAlpha = 1 - k; ctx.fillStyle = "#fff"; ctx.save(); ctx.translate(c[0] + Math.sin(k * 6 + n) * 8, c[1]); ctx.rotate(k * 3 + n); ctx.fillRect(-6, -8, 12, 16); ctx.restore(); }
       ctx.globalAlpha = 1;
     }
-    if (a.id === "film") { // sawtooth roof + spinning reel
-      ctx.fillStyle = a.roof;
-      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(a.x + i * a.w / 5, top); ctx.lineTo(a.x + (i + 1) * a.w / 5, top); ctx.lineTo(a.x + (i + 1) * a.w / 5, top - 22); ctx.closePath(); ctx.fill(); }
-      const rx = a.x + 42, ry = top - 48, ang = busy ? now / 250 : 0;
-      ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(rx, ry, 24, 0, 7); ctx.fill();
-      ctx.fillStyle = "#d9d4ff"; for (let i = 0; i < 5; i++) { const q = ang + i * 1.2566; ctx.beginPath(); ctx.arc(rx + Math.cos(q) * 13, ry + Math.sin(q) * 13, 5, 0, 7); ctx.fill(); }
-      ctx.fillStyle = "#1c2233"; ctx.fillRect(rx - 2, ry + 20, 4, 30);
+    if (b.id === "film") {
+      const ang = busy ? now / 250 : 0; ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(top[0], top[1] - 30, 20, 0, 7); ctx.fill();
+      ctx.fillStyle = "#d9d4ff"; for (let n = 0; n < 5; n++) { const q = ang + n * 1.2566; ctx.beginPath(); ctx.arc(top[0] + Math.cos(q) * 11, top[1] - 30 + Math.sin(q) * 11, 4, 0, 7); ctx.fill(); }
     }
-    if (a.id === "news") { // dish with signal waves
-      const dx = a.x + a.w - 50, dy = top - 30;
-      ctx.fillStyle = "#1c2233"; ctx.fillRect(dx - 2, dy, 4, 30);
-      ctx.fillStyle = "#e8eef7"; ctx.beginPath(); ctx.ellipse(dx, dy, 22, 13, -0.5, 0, 7); ctx.fill();
-      if (busy) { ctx.strokeStyle = "#ffc845"; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { const k = ((now / 700) + i / 3) % 1; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(dx - 10, dy - 8, 14 + k * 40, -2.4, -1.2); ctx.stroke(); } ctx.globalAlpha = 1; }
+    if (b.id === "news") {
+      ctx.fillStyle = "#e8eef7"; ctx.beginPath(); ctx.ellipse(top[0], top[1] - 18, 20, 11, -.5, 0, 7); ctx.fill();
+      if (busy) { ctx.strokeStyle = "#ffc845"; ctx.lineWidth = 3; for (let n = 0; n < 3; n++) { const k = ((now / 700) + n / 3) % 1; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(top[0] - 8, top[1] - 26, 12 + k * 40, -2.4, -1.2); ctx.stroke(); } ctx.globalAlpha = 1; }
     }
-    if (a.id === "post") { // pitched roof + waving flag with plane
-      ctx.fillStyle = a.roof; ctx.beginPath(); ctx.moveTo(a.x - 10, top + 4); ctx.lineTo(a.x + a.w / 2, top - 44); ctx.lineTo(a.x + a.w + 24, top + 4); ctx.closePath(); ctx.fill();
-      const fx = a.x + a.w / 2, fy = top - 44;
-      ctx.fillStyle = "#1c2233"; ctx.fillRect(fx - 2, fy - 50, 4, 50);
-      ctx.fillStyle = "#5bb6ff"; ctx.beginPath(); ctx.moveTo(fx + 2, fy - 50);
-      for (let i = 0; i <= 10; i++) ctx.lineTo(fx + 2 + i * 4.4, fy - 50 + Math.sin(now / 200 + i * .7) * 3);
-      for (let i = 10; i >= 0; i--) ctx.lineTo(fx + 2 + i * 4.4, fy - 28 + Math.sin(now / 200 + i * .7) * 3);
+    if (b.id === "post") {
+      const f = P(b.i + b.fw / 2, b.j + b.fd / 2, b.h + 46);
+      ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f[0], f[1]); ctx.lineTo(f[0], f[1] - 34); ctx.stroke();
+      ctx.fillStyle = "#5bb6ff"; ctx.beginPath(); ctx.moveTo(f[0] + 1, f[1] - 34);
+      for (let n = 0; n <= 8; n++) ctx.lineTo(f[0] + 1 + n * 4, f[1] - 34 + Math.sin(now / 200 + n * .7) * 2.5);
+      for (let n = 8; n >= 0; n--) ctx.lineTo(f[0] + 1 + n * 4, f[1] - 18 + Math.sin(now / 200 + n * .7) * 2.5);
       ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(fx + 12, fy - 38); ctx.lineTo(fx + 36, fy - 45); ctx.lineTo(fx + 22, fy - 33); ctx.closePath(); ctx.fill();
-      // mailbox
-      ctx.fillStyle = "#c0392b"; rr(a.x + a.w + 20, GROUND - 40, 22, 40, 6); ctx.fill();
-      ctx.fillStyle = "#1c2233"; ctx.fillRect(a.x + a.w + 24, GROUND - 30, 14, 3);
     }
-
-    sign(a, a.name);
-    windows(a, busy, dk, now, busy);
-    // door
-    ctx.fillStyle = "#3a2a22"; rr(door(a) - 17, GROUND - 46, 34, 46, [10, 10, 0, 0]); ctx.fill();
-    ctx.fillStyle = "#ffc845"; ctx.beginPath(); ctx.arc(door(a) + 9, GROUND - 22, 2.5, 0, 7); ctx.fill();
-
-    // speech bubble while working
-    if (busy && a.shout) bubble(a.x + a.w * .5, top - (a.id === "film" ? 38 : 20), a.shout, now);
-    if (st === "failed") { // grey smoke and a call for help
-      for (let i = 0; i < 6; i++) { const k = ((now / 1400) + i / 6) % 1; ctx.globalAlpha = .75 * (1 - k); ctx.fillStyle = "#6b7085"; ctx.beginPath(); ctx.arc(a.x + a.w * .3 + Math.sin(k * 5 + i) * 18 + i * 12, top - 10 - k * 110, 12 + k * 22, 0, 7); ctx.fill(); }
-      ctx.globalAlpha = 1; bubble(a.x + a.w * .5, top - 30, "Help! Job failed", now);
-    }
+    if (st === "failed") for (let n = 0; n < 6; n++) { const k = ((now / 1400) + n / 6) % 1; ctx.globalAlpha = .75 * (1 - k); ctx.fillStyle = "#6b7085"; ctx.beginPath(); ctx.arc(top[0] + Math.sin(k * 5 + n) * 16, top[1] - 10 - k * 110, 10 + k * 22, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
   }
-
-  function bubble(x, y, text, now) {
-    ctx.font = "700 15px 'Nunito Sans', sans-serif";
-    const w = ctx.measureText(text).width + 20, b = Math.sin(now / 300) * 3;
-    ctx.fillStyle = "#fff"; rr(x - w / 2, y - 40 + b, w, 28, 10); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - 6, y - 13 + b); ctx.lineTo(x + 6, y - 13 + b); ctx.lineTo(x, y - 4 + b); ctx.fill();
-    ctx.fillStyle = "#1c2233"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y - 26 + b);
+  function drawTree(t, dk) {
+    const [x, y] = P(t[0], t[1]);
+    ctx.fillStyle = sh("#6b4a2e"); ctx.fillRect(x - 2, y - 12, 4, 12);
+    ctx.fillStyle = sh("#2f7a41"); ctx.beginPath(); ctx.arc(x, y - 20, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = sh("#3f9a52"); ctx.beginPath(); ctx.arc(x - 3, y - 23, 7, 0, 7); ctx.fill();
   }
-
-  function person(x, y, color, now, walking, carry, face = 1) {
-    const sw = walking ? Math.sin(now / 110) * 6 : 0, bob = walking ? Math.abs(Math.sin(now / 110)) * 2 : Math.sin(now / 500 + x) * 1.2;
-    ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 5; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(x - 4, y - 16); ctx.lineTo(x - 4 + sw, y); ctx.moveTo(x + 4, y - 16); ctx.lineTo(x + 4 - sw, y); ctx.stroke();
-    ctx.fillStyle = color; rr(x - 11, y - 38 - bob, 22, 26, 8); ctx.fill();
-    ctx.fillStyle = "#f4c9a0"; ctx.beginPath(); ctx.arc(x, y - 48 - bob, 11, 0, 7); ctx.fill();
-    ctx.fillStyle = "#3a2a22"; ctx.beginPath(); ctx.arc(x, y - 52 - bob, 11, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(x + 4 * face, y - 47 - bob, 1.8, 0, 7); ctx.fill();
-    if (carry) item(carry, x + 12 * face, y - 34 - bob, now);
+  function drawCar(c) {
+    const i = c.axis === "i" ? c.pos : c.line + .5 + (c.dir > 0 ? .18 : -.18), j = c.axis === "i" ? c.line + .5 + (c.dir > 0 ? -.18 : .18) : c.pos;
+    const L = c.axis === "i" ? [.26, .13] : [.13, .26], hgt = 7;
+    const A = P(i - L[0], j - L[1]), B = P(i + L[0], j - L[1]), C = P(i + L[0], j + L[1]), D = P(i - L[0], j + L[1]);
+    poly([D, C, up(C, hgt), up(D, hgt)], sh(c.c)); poly([C, B, up(B, hgt), up(C, hgt)], sh(mix(c.c, "#000000", .25)));
+    poly([up(A, hgt), up(B, hgt), up(C, hgt), up(D, hgt)], sh(mix(c.c, "#ffffff", .25)));
+    const g = [.6, .6]; poly([P(i - L[0] * g[0], j - L[1] * g[1], hgt + 5), P(i + L[0] * g[0], j - L[1] * g[1], hgt + 5), P(i + L[0] * g[0], j + L[1] * g[1], hgt + 5), P(i - L[0] * g[0], j + L[1] * g[1], hgt + 5)], "#2a3346");
   }
-
-  function item(kind, x, y, now) {
-    if (kind === "scroll") { ctx.fillStyle = "#fff6d8"; rr(x - 9, y - 12, 18, 22, 3); ctx.fill(); ctx.fillStyle = "#b9a77a"; for (let i = 0; i < 3; i++) ctx.fillRect(x - 5, y - 7 + i * 5, 10, 2); }
-    if (kind === "reel") { ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill(); ctx.fillStyle = "#d9d4ff"; for (let i = 0; i < 4; i++) { const q = now / 200 + i * 1.57; ctx.beginPath(); ctx.arc(x + Math.cos(q) * 6, y + Math.sin(q) * 6, 2.5, 0, 7); ctx.fill(); } }
-    if (kind === "paper") { ctx.fillStyle = "#eef0f3"; rr(x - 11, y - 10, 22, 18, 2); ctx.fill(); ctx.fillStyle = "#2fb3a3"; ctx.fillRect(x - 8, y - 7, 16, 4); ctx.fillStyle = "#9aa3b5"; ctx.fillRect(x - 8, y, 7, 5); ctx.fillRect(x + 1, y, 7, 2); }
+  function drawBlob(x, y, col, now, walking, carry) {
+    const bob = walking ? Math.abs(Math.sin(now / 120)) * 2.5 : Math.sin(now / 500 + x) * 1.2;
+    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(x, y, 7, 3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, y - 10 - bob, 8, 10, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x - 3, y - 13 - bob, 2.6, 0, 7); ctx.arc(x + 3, y - 13 - bob, 2.6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1c2233"; ctx.beginPath(); ctx.arc(x - 2.4, y - 13 - bob, 1.3, 0, 7); ctx.arc(x + 3.6, y - 13 - bob, 1.3, 0, 7); ctx.fill();
+    if (carry) { ctx.fillStyle = carry; ctx.fillRect(x + 6, y - 20 - bob, 9, 11); ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 1; ctx.strokeRect(x + 6, y - 20 - bob, 9, 11); }
   }
-
-  function plane(x, y, now) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(-0.35 + Math.sin(now / 150) * .05);
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(20, -10); ctx.lineTo(-6, 10); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#5bb6ff"; ctx.beginPath(); ctx.moveTo(-6, 10); ctx.lineTo(20, -10); ctx.lineTo(-2, 2); ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
-
-  function lot(dk, now) {
-    const x = LOT.x, w = LOT.w;
-    ctx.fillStyle = mix("#a07a4f", "#4d3d2c", dk); ctx.fillRect(x, GROUND - 8, w, 8);
-    // fence
-    ctx.fillStyle = mix("#ffb347", "#8a6430", dk); for (let i = 0; i < 7; i++) ctx.fillRect(x + 4 + i * 18, GROUND - 34, 6, 30);
-    ctx.fillRect(x, GROUND - 28, w, 5);
-    // crane
-    ctx.strokeStyle = "#ffc845"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + w - 20, GROUND - 8); ctx.lineTo(x + w - 20, GROUND - 300); ctx.lineTo(x - 70, GROUND - 300); ctx.stroke();
-    ctx.lineWidth = 2; for (let y = GROUND - 290; y < GROUND - 10; y += 20) { ctx.beginPath(); ctx.moveTo(x + w - 26, y); ctx.lineTo(x + w - 14, y + 20); ctx.stroke(); }
-    const sway = Math.sin(now / 1200) * 0.08, hx = x + 50, hy = GROUND - 300;
-    ctx.save(); ctx.translate(hx, hy); ctx.rotate(sway);
-    ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 120); ctx.stroke();
-    ctx.fillStyle = "#1c2233"; rr(-62, 120, 124, 50, 8); ctx.fill();
-    ctx.fillStyle = "#ffc845"; ctx.font = "16px 'Lilita One', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("NEXT AGENT", 0, 136); ctx.fillStyle = "#f3f1ea"; ctx.font = "600 12px 'Nunito Sans', sans-serif"; ctx.fillText("Job search helper", 0, 155);
-    ctx.restore();
+  const CARRY = { writer: "#fff6d8", film: "#d9d4ff", news: "#eef0f3" };
+  const SHOUT = { writer: "drafting the hook…", film: "Action! rendering…", news: "Breaking news!", post: "sending to Telegram", hq: "on it" };
+  function drawLot(now, dk) {
+    const x = LOTX, y = LOTY;
+    ctx.strokeStyle = sh("#ffb347"); ctx.lineWidth = 2;
+    const c = [P(x + .2, y + .2), P(x + 3.8, y + .2), P(x + 3.8, y + 3.8), P(x + .2, y + 3.8)];
+    for (let k = 0; k < 4; k++) { const a = c[k], b = c[(k + 1) % 4]; for (let s = 0; s <= 8; s++) { const p = [lerp(a[0], b[0], s / 8), lerp(a[1], b[1], s / 8)]; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0], p[1] - 12); ctx.stroke(); } }
+    const base = P(x + 3.2, y + 3.2), mast = up(base, 220), jib = P(x - 1.5, y + 3.2, 220);
+    ctx.strokeStyle = "#ffc845"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(...base); ctx.lineTo(...mast); ctx.lineTo(...jib); ctx.stroke();
+    const sway = Math.sin(now / 1300) * 6, hook = [lerp(mast[0], jib[0], .55) + sway, lerp(mast[1], jib[1], .55)];
+    ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(hook[0] - sway, hook[1]); ctx.lineTo(hook[0], hook[1] + 110); ctx.stroke();
+    return [hook[0], hook[1] + 110];
   }
 
   function frame(now) {
@@ -587,34 +773,175 @@
     if (mode === "live") simT = istNow();
     else if (playing) { simT += dt * SPEED; if (simT > T1) simT = T0; }
     const t = simT, dk = darkness(t / 60);
+    dkStep = Math.round(dk * 10);
+    if (!cw || cv.offsetParent === null) { ui(t); requestAnimationFrame(frame); return; }   // city screen hidden
+    if (groundStep !== dkStep) paintGround();
 
-    drawSky(t, now);
-    drawStreet(dk);
-    AGENTS.forEach(a => building(a, t, dk, now));
-    lot(dk, now);
+    if (camTarget) { cam.x = lerp(cam.x, camTarget.x, .06); cam.y = lerp(cam.y, camTarget.y, .06); if (Math.hypot(cam.x - camTarget.x, cam.y - camTarget.y) < 2) camTarget = null; }
 
-    // idle staff waiting by their doors
-    workers.forEach(a => { const s = effStatus(a, t); if (s === "scheduled" || s === "done" || s === "failed") person(door(a) + 34, GROUND + 14, a.body, now, false, null, -1); });
-    person(door(byId.post) - 40, GROUND + 14, "#c0392b", now, false, null, 1); // postmaster
+    // sky
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const [top, bot] = sky(t / 60), g = ctx.createLinearGradient(0, 0, 0, ch);
+    g.addColorStop(0, top); g.addColorStop(1, bot); ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
 
-    // couriers walking to the next building
-    workers.forEach(a => {
-      if (status(a, t) !== "delivering") return;
-      const k = (t - a.start - a.work) / a.walk, from = door(a), to = door(byId[a.to]) - 10;
-      person(lerp(from, to, k), GROUND + 16, a.body, now, true, a.carry, to > from ? 1 : -1);
+    // world
+    ctx.setTransform(dpr * cam.z, 0, 0, dpr * cam.z, dpr * (cw / 2 - cam.x * cam.z), dpr * (ch / 2 - cam.y * cam.z));
+    ctx.drawImage(ground, GX0, GY0, GW, GH);
+    const vx0 = cam.x - cw / 2 / cam.z - 80, vx1 = cam.x + cw / 2 / cam.z + 80, vy0 = cam.y - ch / 2 / cam.z - 60, vy1 = cam.y + ch / 2 / cam.z + 320;
+    const vis = (i, j) => { const [x, y] = P(i, j); return x > vx0 && x < vx1 && y > vy0 && y < vy1; };
+
+    const items = [], overlay = [];
+    buildings.forEach(b => { if (vis(b.i + b.fw / 2, b.j + b.fd / 2)) items.push([b.i + b.fw + b.j + b.fd - 1, () => drawBox(b, b.kind === "lm" ? lmStatus(b.id, t) : "", dk, now)]); });
+    trees.forEach(tr => { if (vis(tr[0], tr[1])) items.push([tr[0] + tr[1], () => drawTree(tr, dk)]); });
+    cars.forEach(c => {
+      c.pos += c.dir * c.sp * dt; if (c.pos > N) c.pos -= N; if (c.pos < 0) c.pos += N;
+      const i = c.axis === "i" ? c.pos : c.line + .5, j = c.axis === "i" ? c.line + .5 : c.pos;
+      if (vis(i, j)) items.push([i + j, () => drawCar(c)]);
     });
-    // planes to Telegram
+    walkers.forEach(w => {
+      stepWalker(w, dt, now);
+      const i = lerp(w.i, w.ti, w.k) + .5 + w.ox * .6, j = lerp(w.j, w.tj, w.k) + .5 + w.oy * .6;
+      if (!vis(i, j)) return;
+      items.push([i + j, () => drawBlob(...P(i, j), w.c, now, true)]);
+      if (cam.z > 1.1) overlay.push(["name", P(i, j, 26), w.name]);
+      if (now < w.sayUntil) overlay.push(["say", P(i, j, 30), w.say]);
+    });
+    // agent crews at their front doors
+    Object.keys(LM).forEach(id => {
+      const [fi, fj] = front(id), st = lmStatus(id, t), busy = st === "working" || st === "sending";
+      const col = LM[id].body;
+      [[.2, .15], [.8, .35]].forEach(([a, b], n) => {
+        const i = fi + a, j = fj + b;
+        items.push([i + j, () => drawBlob(...P(i, j), col, now + n * 300, busy)]);
+      });
+      if (busy) overlay.push(["say", P(fi + .5, fj + .2, 34), SHOUT[id]]);
+      if (st === "failed") overlay.push(["warn", P(fi + .5, fj + .2, 34), "Help! Job failed"]);
+    });
+    // couriers carrying work to the next building
+    workers.forEach(a => {
+      if (effStatus(a, t) !== "delivering") return;
+      const k = (t - a.start - a.work) / a.walk, [i, j] = along(ROUTES[a.id], k);
+      items.push([i + j, () => drawBlob(...P(i, j), a.body, now, true, CARRY[a.id])]);
+      overlay.push(["say", P(i, j, 34), "delivering to " + byId[a.to].name]);
+    });
+    let hook = [0, 0];
+    items.push([LOTX + LOTY + 4, () => { hook = drawLot(now, dk); }]);
+    items.sort((x, y) => x[0] - y[0]).forEach(it => it[1]());
+
+    // street lamps at night
+    if (dk > .3) { ctx.fillStyle = `rgba(255,216,107,${.55 * dk})`; for (let i = 0; i <= 30; i += BLK) for (let j = 0; j <= 30; j += BLK) { if (!vis(i, j)) continue; const [x, y] = P(i + .5, j + .5); ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(255,216,107,${.12 * dk})`; ctx.beginPath(); ctx.ellipse(x, y, 22, 11, 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(255,216,107,${.55 * dk})`; } }
+
+    // paper planes leaving the post office
     workers.forEach(a => {
       const k = (t - a.arrive) / 1.6;
-      if (k >= 0 && k < 1) { const p = byId.post; plane(lerp(p.x + p.w / 2, W + 60, k), lerp(GROUND - p.h - 60, 30, k) - Math.sin(k * Math.PI) * 30, now); }
+      if (k < 0 || k >= 1) return;
+      const s = lmCenter("post"), x = s[0] + k * 420, y = s[1] - 120 - k * 320 - Math.sin(k * Math.PI) * 40;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-.5); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(20, -10); ctx.lineTo(-6, 10); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#5bb6ff"; ctx.beginPath(); ctx.moveTo(-6, 10); ctx.lineTo(20, -10); ctx.lineTo(-2, 2); ctx.closePath(); ctx.fill(); ctx.restore();
     });
 
-    // vignette at night
-    if (dk > 0) { ctx.fillStyle = `rgba(7,13,36,${dk * .18})`; ctx.fillRect(0, 0, W, H); }
+    // screen-space labels: signs, names, bubbles
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    overlay.forEach(([kind, w, text]) => {
+      const [x, y] = worldToScreen(w[0], w[1]);
+      if (x < -60 || x > cw + 60 || y < -30 || y > ch + 30) return;
+      if (kind === "name") { ctx.font = "700 10px 'Nunito Sans', sans-serif"; ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillText(text, x, y); return; }
+      ctx.font = "700 12px 'Nunito Sans', sans-serif";
+      const tw = ctx.measureText(text).width + 16, yy = y - 12;
+      ctx.fillStyle = kind === "warn" ? "#ff6b5b" : "#fff"; rr(x - tw / 2, yy - 11, tw, 22, 8); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 5, yy + 10); ctx.lineTo(x + 5, yy + 10); ctx.lineTo(x, yy + 16); ctx.fill();
+      ctx.fillStyle = kind === "warn" ? "#fff" : "#1c2233"; ctx.fillText(text, x, yy);
+    });
+    const fsz = Math.max(11, Math.min(18, 17 * cam.z)), ssz = Math.max(8, Math.min(10, 10 * cam.z)), bh = fsz + ssz + 12;
+    const signs = Object.keys(LM).map(id => {
+      const b = lmById[id], w = worldToScreen(...P(b.i + b.fw / 2, b.j + b.fd / 2, b.h + (b.pyramid ? 60 : 30) + (id === "hq" || id === "film" ? 50 : 0)));
+      return { id, b, x: w[0], y: w[1], name: LM[id].name, st: lmStatus(id, t) };
+    });
+    signs.push({ id: "lot", x: worldToScreen(...P(LOTX + 2, LOTY + 2, 90))[0], y: worldToScreen(...P(LOTX + 2, LOTY + 2, 90))[1], name: "Next agent", sub: "JOB SEARCH HELPER" });
+    signs.sort((p, q) => q.y - p.y);
+    const placed = [];
+    signs.forEach(sg => {
+      ctx.font = fsz + "px 'Lilita One', 'Trebuchet MS', sans-serif";
+      sg.w = Math.max(ctx.measureText(sg.name).width, 50);
+      if (sg.sub) { ctx.font = "800 " + ssz + "px 'Nunito Sans', sans-serif"; sg.w = Math.max(sg.w, ctx.measureText(sg.sub).width); }
+      sg.w += 20;
+      let top = sg.y - bh;
+      for (let n = 0; n < 6; n++) {
+        const hit = placed.find(r => sg.x - sg.w / 2 < r[0] + r[2] && sg.x + sg.w / 2 > r[0] && top < r[1] + r[3] + 3 && top + bh + 3 > r[1]);
+        if (!hit) break; top = hit[1] - bh - 4;
+      }
+      placed.push([sg.x - sg.w / 2, top, sg.w, bh]);
+      if (sg.x < -120 || sg.x > cw + 120 || top < -60 || top > ch + 20) return;
+      if (top + bh < sg.y - 2) { ctx.strokeStyle = "rgba(28,34,51,.8)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sg.x, top + bh); ctx.lineTo(sg.x, sg.y); ctx.stroke(); }
+      ctx.fillStyle = sg.id === "lot" ? "rgba(28,34,51,.8)" : "rgba(28,34,51,.94)"; rr(sg.x - sg.w / 2, top, sg.w, bh, 9); ctx.fill();
+      ctx.fillStyle = "#ffc845"; ctx.font = fsz + "px 'Lilita One', 'Trebuchet MS', sans-serif"; ctx.fillText(sg.name, sg.x, top + 5 + fsz / 2);
+      ctx.font = "800 " + ssz + "px 'Nunito Sans', sans-serif";
+      ctx.fillStyle = sg.sub ? "#a6aec6" : ({ working: "#4fd18b", sending: "#5bb6ff", delivering: "#5bb6ff", failed: "#ff6b5b", done: "#f3f1ea" }[sg.st] || "#a6aec6");
+      ctx.fillText(sg.sub || (LABEL[sg.st] || "Open").toUpperCase(), sg.x, top + bh - 5 - ssz / 2);
+      if (sg.b) sg.b.sign = [sg.x - sg.w / 2, top, sg.w, bh];
+    });
 
     ui(t);
     requestAnimationFrame(frame);
   }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+  function lmStatus(id, t) { return id === "hq" ? (pending.post ? "working" : "waiting") : effStatus(byId[id], t); }
+
+  // ---------- touch / mouse: drag to pan, pinch or wheel to zoom, tap a landmark ----------
+  function landmarkAt(sx, sy) {
+    let best = null, bestD = -1;
+    Object.keys(LM).forEach(id => {
+      const b = lmById[id];
+      const pts = [P(b.i, b.j), P(b.i + b.fw, b.j), P(b.i + b.fw, b.j + b.fd), P(b.i, b.j + b.fd)].flatMap(p => [p, up(p, b.h + 50)]).map(p => worldToScreen(p[0], p[1]));
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      let hit = sx >= Math.min(...xs) && sx <= Math.max(...xs) && sy >= Math.min(...ys) && sy <= Math.max(...ys);
+      if (b.sign) { const [x, y, w, h] = b.sign; hit = hit || (sx >= x && sx <= x + w && sy >= y && sy <= y + h); }
+      const d = b.i + b.j; if (hit && d > bestD) { best = id; bestD = d; }
+    });
+    return best;
+  }
+  const ptrs = new Map(); let drag = null, pinch = null;
+  const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.addEventListener("pointerdown", e => {
+    cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, local(e)); camTarget = null; lastUser = Date.now();
+    if (ptrs.size === 1) { const [x, y] = local(e); drag = { x, y, cx: cam.x, cy: cam.y, t: performance.now(), moved: false }; }
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: cam.z, w: screenToWorld(...mid) }; drag = null;
+    }
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!ptrs.has(e.pointerId)) { if (e.pointerType === "mouse") cv.classList.toggle("hot", !!landmarkAt(...local(e))); return; }
+    ptrs.set(e.pointerId, local(e)); lastUser = Date.now();
+    if (pinch && ptrs.size >= 2) {
+      const [a, b] = [...ptrs.values()], mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      cam.z = pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d; clampCam();
+      cam.x = pinch.w[0] - (mid[0] - cw / 2) / cam.z; cam.y = pinch.w[1] - (mid[1] - ch / 2) / cam.z; clampCam();
+    } else if (drag) {
+      const [x, y] = local(e);
+      if (Math.hypot(x - drag.x, y - drag.y) > 6) drag.moved = true;
+      cam.x = drag.cx - (x - drag.x) / cam.z; cam.y = drag.cy - (y - drag.y) / cam.z; clampCam();
+    }
+  });
+  const endPtr = e => {
+    if (drag && !drag.moved && ptrs.size === 1 && performance.now() - drag.t < 500) {
+      const id = landmarkAt(...local(e)); if (id) select(B2CC[id], true);
+    }
+    ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) drag = null;
+  };
+  cv.addEventListener("pointerup", endPtr); cv.addEventListener("pointercancel", e => { ptrs.delete(e.pointerId); pinch = null; drag = null; });
+  cv.addEventListener("wheel", e => {
+    e.preventDefault(); lastUser = Date.now(); camTarget = null;
+    const [x, y] = local(e), w = screenToWorld(x, y);
+    cam.z *= Math.exp(-e.deltaY * .0015); clampCam();
+    cam.x = w[0] - (x - cw / 2) / cam.z; cam.y = w[1] - (y - ch / 2) / cam.z; clampCam();
+  }, { passive: false });
+  const zoomBy = f => { lastUser = Date.now(); camTarget = null; cam.z *= f; clampCam(); };
+  document.getElementById("zoomIn").addEventListener("click", () => zoomBy(1.25));
+  document.getElementById("zoomOut").addEventListener("click", () => zoomBy(.8));
+  document.getElementById("recenter").addEventListener("click", () => { camTarget = null; homeCam(); });
+
 
   // ---------- DOM: clock, timeline, roster ----------
   const $ = id => document.getElementById(id);
@@ -672,7 +999,7 @@
     src.className = "src" + (liveReal ? " live" : ""); src.textContent = liveReal ? "Live from server · " + fmtAt(real.updated) : (mode === "live" ? "Live clock · simulated" : "Replay");
     // on narrow screens, keep the busy building in view
     const active = workers.find(a => ["working", "delivering", "failed"].includes(effStatus(a, t)));
-    if (active && active.id !== lastActive) { lastActive = active.id; const sc = document.querySelector(".scroller"); if (sc.scrollWidth > sc.clientWidth + 4) sc.scrollTo({ left: (door(active) / W) * sc.scrollWidth - sc.clientWidth / 2, behavior: reduced ? "auto" : "smooth" }); }
+    if (active && active.id !== lastActive) { lastActive = active.id; focusOn(active.id); }
     // next job
     const upcoming = workers.map(a => { let d = a.start - t; if (d <= 0) d += 1440; return [d, a]; }).sort((x, y) => x[0] - y[0])[0];
     const d = upcoming[0], hh = Math.floor(d / 60), mm = Math.floor(d % 60);
@@ -844,23 +1171,135 @@
   };
 
   // tap a building in the city to talk to it
-  const B2CC = { writer: "writer", film: "film", news: "news", post: "hq" };
-  function hit(e) {
-    const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
-    return AGENTS.find(a => x >= a.x - 10 && x <= a.x + a.w + 20 && y >= GROUND - a.h - 70 && y <= GROUND + 20);
-  }
-  cv.addEventListener("click", e => { const a = hit(e); if (a) select(B2CC[a.id], true); });
-  cv.addEventListener("mousemove", e => cv.classList.toggle("hot", !!hit(e)));
+  const B2CC = { writer: "writer", film: "film", news: "news", post: "hq", hq: "hq" };
+
 
   setInterval(() => { renderTiles(); if (!document.activeElement || !$("ccRows").contains(document.activeElement)) renderRows(); }, 5000);
+  // ---------- My Tracking: Google Calendar + Notion through the server ----------
+  let track = null, range = store.get("range", 0), tkLoading = false, tkLast = 0;
+  const TZ = "Asia/Kolkata";
+  const dayKey = d => new Date(d).toLocaleDateString("en-CA", { timeZone: TZ });
+  const hm = d => new Date(d).toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+  const longDay = d => new Date(d).toLocaleDateString("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+  function exampleTrack() {
+    const today = dayKey(Date.now()), at = (h, m, add = 0) => new Date(new Date(today + "T00:00:00+05:30").getTime() + (add * 1440 + h * 60 + m) * 6e4).toISOString();
+    return { example: true, calendar: [
+      { title: "Dynatrace standup", start: at(9, 30), end: at(10, 0), location: "Teams" },
+      { title: "Deep work: observability dashboards", start: at(11, 0), end: at(13, 0) },
+      { title: "PortSwigger lab: SSRF", start: at(18, 0), end: at(19, 0) },
+      { title: "Boxing", start: at(19, 30), end: at(20, 30), location: "Gym" },
+      { title: "Record AI news video", start: at(22, 30), end: at(23, 30) },
+      { title: "Dynatrace standup", start: at(9, 30, 1), end: at(10, 0, 1), location: "Teams" },
+      { title: "Bug bounty recon", start: at(20, 0, 1), end: at(21, 30, 1) },
+    ], notion: [
+      { id: "ex1", title: "Write up the SSRF lab for GitHub", due: today, done: false },
+      { id: "ex2", title: "Improve reel voice and captions", due: null, done: false },
+      { id: "ex3", title: "Job search helper: pick target roles", due: dayKey(Date.now() + 2 * 864e5), done: false },
+      { id: "ex4", title: "Push Hermesville v7", due: null, done: true },
+    ], notionName: "Notion (example)", errors: {}, sources: { calendar: true, notion: true } };
+  }
+  async function tapi(path, opts = {}) {
+    const r = await fetch(base() + "/tracking" + path, { ...opts, headers: { "Authorization": "Bearer " + conn.key, "Content-Type": "application/json" } });
+    if (r.status === 401) throw new Error("Key rejected. Check POWER settings in Command.");
+    if (r.status === 404) throw new Error("Tracking isn't running on the server yet. Run enable_tracking.sh.");
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Server answered " + r.status);
+    return j;
+  }
+  async function loadTrack(force) {
+    if (tkLoading || (!force && track && !track.example && Date.now() - tkLast < 60000)) { renderTrack(); return; }
+    if (!conn) { track = exampleTrack(); renderTrack("Connect your server first: open Command and tap POWER."); return; }
+    tkLoading = true; $("tkRefresh").textContent = "Loading…";
+    try { track = await tapi("/api/summary?days=8"); tkLast = Date.now(); renderTrack(); }
+    catch (e) { if (!track) track = exampleTrack(); renderTrack(e instanceof TypeError ? "Can't reach /tracking on your server. Run enable_tracking.sh, then Refresh." : e.message); }
+    finally { tkLoading = false; $("tkRefresh").textContent = "Refresh"; }
+  }
+  function renderTrack(setupMsg) {
+    if (!track) return;
+    const now = Date.now(), today = dayKey(now);
+    $("tkDate").textContent = longDay(now);
+    const src = $("tkSrc"); src.className = "src" + (track.example ? "" : " live"); src.textContent = track.example ? "Example" : "Live · " + hm(track.now || now);
+    const setup = $("tkSetup"), missing = [];
+    if (!track.example && !track.sources.calendar) missing.push("<li>Google Calendar: add <code>GCAL_ICS_URL</code> to <code>~/.hermes/.env</code></li>");
+    if (!track.example && !track.sources.notion) missing.push("<li>Notion: add <code>NOTION_TOKEN</code> and <code>NOTION_DB_ID</code></li>");
+    setup.hidden = !setupMsg && !missing.length;
+    setup.innerHTML = setupMsg ? `<b>Showing example data</b><p>${esc(setupMsg)}</p>` : `<b>Almost there</b><ol>${missing.join("")}</ol><p>Then run <code>systemctl --user restart hermesville-tracker</code> and tap Refresh.</p>`;
+    document.querySelectorAll("[data-range]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.range === range));
+
+    // next up
+    const evs = (track.calendar || []).map(e => ({ ...e, s: new Date(e.start).getTime(), e: new Date(e.end).getTime() }));
+    const cur = evs.find(e => !e.allDay && e.s <= now && e.e > now), nxt = evs.find(e => !e.allDay && e.s > now);
+    const box = $("tkNext");
+    if (cur || nxt) {
+      const e = cur || nxt, mins = Math.round((e.s - now) / 6e4);
+      const when = cur ? "NOW" : mins < 60 ? mins + "m" : mins < 1440 ? Math.floor(mins / 60) + "h " + (mins % 60) + "m" : longDay(e.s).split(",")[0];
+      box.innerHTML = `<span class="when">${esc(when)}</span><span class="lbl">${cur ? "Happening now · until " + hm(e.e) : "Next up · " + (dayKey(e.s) === today ? "today " : "") + hm(e.s)}</span><span class="ttl">${esc(e.title)}</span>`;
+    } else box.innerHTML = `<span class="when">—</span><span class="lbl">Nothing scheduled</span><span class="ttl">Your calendar is clear.</span>`;
+
+    // schedule list
+    const want = range === 0 ? [today] : range === 1 ? [dayKey(now + 864e5)] : Array.from({ length: 7 }, (_, n) => dayKey(now + n * 864e5));
+    let h = "";
+    want.forEach(d => {
+      const list = evs.filter(e => dayKey(e.s) === d || (e.allDay && dayKey(e.s) <= d && dayKey(e.e - 1) >= d));
+      if (range === 7) h += `<div class="tk-day">${esc(longDay(d + "T12:00:00+05:30"))}</div>`;
+      if (!list.length) { h += `<p class="tk-empty">${range === 7 ? "Free" : "Nothing on the calendar."}</p>`; return; }
+      list.forEach(e => {
+        const st = e.allDay ? "" : e.s <= now && e.e > now ? " now" : e.e <= now ? " past" : "";
+        h += `<div class="ev${st}"><span class="tm">${e.allDay ? "All day" : hm(e.s) + "–" + hm(e.e)}</span><span><div class="t">${esc(e.title)}</div>${e.location || e.calendar ? `<div class="m">${esc([e.location, e.calendar].filter(Boolean).join(" · "))}</div>` : ""}</span></div>`;
+      });
+    });
+    $("tkCal").innerHTML = h;
+    const ce = $("tkCalErr"); ce.hidden = !track.errors.calendar; ce.textContent = track.errors.calendar ? "Calendar: " + track.errors.calendar : "";
+
+    // notion list: open first (overdue/today on top), then done
+    const items = (track.notion || []).slice().sort((a, b) => (a.done - b.done) || ((a.due || "9999") < (b.due || "9999") ? -1 : 1));
+    $("tkNotionName").textContent = "Notes · " + (track.notionName || "Notion");
+    $("tkNotes").innerHTML = items.length ? items.map(n => {
+      const dcls = n.due ? (n.due.slice(0, 10) < today ? " late" : n.due.slice(0, 10) === today ? " today" : "") : "";
+      const dtxt = n.due ? (n.due.slice(0, 10) === today ? "Today" : new Date(n.due.slice(0, 10) + "T12:00:00+05:30").toLocaleDateString("en-IN", { timeZone: TZ, day: "numeric", month: "short" })) : "";
+      return `<div class="todo${n.done ? " done" : ""}"><button type="button" class="ck" data-id="${esc(n.id)}" aria-pressed="${n.done}" aria-label="${n.done ? "Mark not done" : "Mark done"}: ${esc(n.title)}">${n.done ? "✓" : ""}</button><span class="t">${esc(n.title)}</span><span>${dtxt ? `<span class="due${dcls}">${esc(dtxt)}</span>` : ""}${n.url ? ` <a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open in Notion">↗</a>` : ""}</span></div>`;
+    }).join("") : `<p class="tk-empty">No notes yet. Add one above.</p>`;
+    const ne = $("tkNotionErr"); ne.hidden = !track.errors.notion; ne.textContent = track.errors.notion ? track.errors.notion : "";
+  }
+  document.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => { range = +b.dataset.range; store.set("range", range); renderTrack(); }));
+  $("tkRefresh").addEventListener("click", () => loadTrack(true));
+  $("tkNotes").addEventListener("click", async e => {
+    const b = e.target.closest(".ck"); if (!b || !track) return;
+    const n = track.notion.find(x => x.id === b.dataset.id); if (!n) return;
+    n.done = !n.done; renderTrack();
+    if (track.example) return;
+    try { await tapi("/api/notion/" + n.id, { method: "PATCH", body: JSON.stringify({ done: n.done }) }); }
+    catch (err) { n.done = !n.done; track.errors.notion = "Couldn't update Notion: " + err.message; renderTrack(); }
+  });
+  $("tkAdd").addEventListener("submit", async e => {
+    e.preventDefault();
+    const title = $("tkNew").value.trim(), due = $("tkDue").value || null; if (!title || !track) return;
+    $("tkNew").value = ""; $("tkDue").value = "";
+    const item = { id: "new" + Date.now(), title, due, done: false }; track.notion.unshift(item); renderTrack();
+    if (track.example) return;
+    try { const r = await tapi("/api/notion", { method: "POST", body: JSON.stringify({ title, due }) }); item.id = r.id; item.url = r.url; track.errors.notion = ""; renderTrack(); }
+    catch (err) { track.notion = track.notion.filter(x => x !== item); track.errors.notion = "Couldn't add to Notion: " + err.message; renderTrack(); }
+  });
+  $("tkPlan").addEventListener("click", () => {
+    if (!track) return;
+    const today = dayKey(Date.now());
+    const evs = (track.calendar || []).filter(e => dayKey(e.start) === today).map(e => (e.allDay ? "all day" : hm(e.start) + "-" + hm(e.end)) + " " + e.title).join("; ");
+    const todo = (track.notion || []).filter(n => !n.done).slice(0, 8).map(n => n.title + (n.due ? " (due " + n.due.slice(0, 10) + ")" : "")).join("; ");
+    select("hq"); setTab("cmd");
+    $("ccInput").value = `Plan the rest of my day. Schedule: ${evs || "nothing"}. Open notes: ${todo || "none"}. Give me short time blocks and the top 3 priorities.`;
+    $("ccInput").focus();
+  });
+  setInterval(() => { if (document.body.dataset.tab === "track" && !document.hidden) loadTrack(); }, 300000);
+
   // phone screens
-  function phone() { return matchMedia("(max-width: 760px)").matches; }
+  function phone() { return matchMedia("(max-width: 760px), (pointer: coarse) and (max-width: 1180px)").matches; }
   function setTab(t) {
     document.body.dataset.tab = t; store.set("tab", t);
     document.querySelectorAll("#tabbar button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
     if (t === "cmd") $("cmdDot").hidden = true;
     window.scrollTo(0, 0);
     if (t === "city") requestAnimationFrame(fit);
+    if (t === "track") loadTrack();
   }
   $("tabbar").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab); });
   setTab(store.get("tab", "city"));

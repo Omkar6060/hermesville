@@ -1,6 +1,6 @@
 // Hermesville service worker: always fetch the newest app from GitHub
 // (skipping the browser cache), fall back to the saved copy when offline.
-const CACHE = "hermesville-v6";
+const CACHE = "hermesville-v8";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {
