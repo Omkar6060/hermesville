@@ -12,3 +12,6 @@ videos/
 today.json
 status.json
 revoked_sessions.json
+*sa*.json
+gcal-sa.json
+agents.json

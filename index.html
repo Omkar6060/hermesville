@@ -95,7 +95,7 @@
   .src.live { background: rgba(79,209,139,.16); color: var(--ok); }
   .card .last { font-size: 13px; color: var(--text); border-top: 1px solid var(--line); padding-top: 8px; }
   .card .last:empty { display: none; }
-  .pill.scheduled, .pill.waiting, .pill.building { background: rgba(138,147,173,.16); color: var(--idle); }
+  .pill.scheduled, .pill.waiting, .pill.building, .pill.paused { background: rgba(138,147,173,.16); color: var(--idle); }
   .card.lot { border-style: dashed; background: transparent; }
   .note { font-size: 13px; color: var(--muted); margin: 0; }
   .note b { color: var(--text); font-weight: 600; }
@@ -164,7 +164,17 @@
   .fld { display: grid; gap: 4px; }
   .fld span { font: 700 10.5px var(--mono); letter-spacing: .2em; color: var(--t-green); text-transform: uppercase; }
   .fld input { background: rgba(0,0,0,.3); border: 1px solid var(--t-line); border-radius: 10px; color: var(--t-text); font: 500 13px var(--mono); padding: 9px 10px; }
-  .fld input:focus { outline: 2px solid var(--t-green); outline-offset: 1px; }
+  .fld input:focus, .fld textarea:focus { outline: 2px solid var(--t-green); outline-offset: 1px; }
+  .fld textarea { background: rgba(0,0,0,.3); border: 1px solid var(--t-line); border-radius: 10px; color: var(--t-text); font: 500 13px/1.5 var(--mono); padding: 9px 10px; resize: vertical; }
+  .tbtn[aria-pressed="true"] { background: var(--t-green); color: #06120b; border-color: var(--t-green); }
+  .swatch { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
+  .swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px var(--t-green); }
+  .swatch:focus-visible { outline: 2px solid var(--t-green); outline-offset: 2px; }
+  .card .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .card .acts button { font: 700 12.5px var(--body); border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+  .card .acts button.warn { border-color: rgba(255,107,91,.5); color: #ff6b5b; }
+  .card .acts button:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+  .card .prompt { font: 500 12.5px/1.5 var(--mono); color: var(--muted); max-height: 5.5em; overflow: hidden; }
   .btns { display: flex; flex-wrap: wrap; gap: 8px; }
   .tbtn { font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; border-radius: 10px; padding: 9px 12px; cursor: pointer; border: 1px solid var(--t-line); background: rgba(0,0,0,.2); color: var(--t-row); }
   .tbtn.pri { background: var(--t-green); color: #06120b; border-color: var(--t-green); }
@@ -229,6 +239,23 @@
   .tk-btn.alt { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
   .tk-btn:focus-visible, .todo .ck:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
   .tk-err { font-size: 13px; color: #ff6b5b; margin: 0; }
+  .tk-plan textarea { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font: 500 15px/1.45 var(--body); padding: 10px 12px; resize: vertical; }
+  .pl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .pl-row label, .pl-opts label { display: grid; gap: 4px; font: 700 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .pl-row input, .pl-row select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font: 500 14px var(--body); padding: 9px 10px; color-scheme: dark; }
+  .tk-plan textarea:focus, .pl-row input:focus, .pl-row select:focus { outline: 2px solid var(--go); outline-offset: 1px; }
+  .pl-opts { display: grid; gap: 8px; }
+  .pl-opts label { display: flex; align-items: center; gap: 10px; text-transform: none; letter-spacing: 0; font: 600 14px var(--body); color: var(--text); }
+  .pl-opts input { width: 20px; height: 20px; accent-color: var(--ok); }
+  .pl-opts label.off { color: var(--muted); }
+  .pl-title { font: 800 18px var(--body); }
+  .pl-sess { display: grid; grid-template-columns: 112px 1fr auto; gap: 10px; align-items: start; padding: 9px 10px; border-radius: 10px; background: var(--panel-2); }
+  .pl-sess .tm { font: 600 12.5px var(--mono); color: var(--muted); }
+  .pl-sess .t { font-weight: 700; }
+  .pl-sess .d { font-size: 12.5px; color: var(--muted); }
+  .pl-sess button { background: none; border: 0; color: var(--muted); font: 800 18px var(--body); cursor: pointer; padding: 0 4px; line-height: 1; }
+  .pl-sess button:hover { color: #ff6b5b; }
+  .tk-actions2 { display: flex; flex-wrap: wrap; gap: 8px; }
   .tk-empty { font-size: 14px; color: var(--muted); margin: 0; }
   .tk-setup { background: transparent; border: 1px dashed var(--sign); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
   .tk-setup b { color: var(--sign); }
@@ -361,10 +388,38 @@
           <label class="fld"><span>Telegram bot (optional)</span><input id="ccBot" type="text" placeholder="your_bot_username"></label>
           <div class="btns"><button class="tbtn pri" type="button" id="ccSave">Save + test</button><button class="tbtn" type="button" id="ccForget">Log out</button><button class="tbtn" type="button" id="ccClose">Close</button></div>
           <p id="ccSetupMsg"></p>
-          <p>App version 9 · type <code>/clear</code> to wipe a thread</p>
+          <p>App version 11 · type <code>/clear</code> to wipe a thread</p>
+        </div>
+
+        <div class="panel setup" id="ccBuild" hidden>
+          <div class="eyebrow">Build an agent</div>
+          <div class="btns" role="group" aria-label="How to build it">
+            <button class="tbtn pri" type="button" id="bModeAuto" aria-pressed="true">Describe it</button>
+            <button class="tbtn" type="button" id="bModeManual" aria-pressed="false">Build it yourself</button>
+          </div>
+          <div id="bAuto" class="setup" style="padding:0">
+            <p>Say what it should do and when. Hermes drafts the agent; you check it before it's created.</p>
+            <label class="fld"><span>What should it do?</span><textarea id="bDesc" rows="3" placeholder="Every weekday at 9am, check the weather in my city and tell me if I need an umbrella"></textarea></label>
+            <div class="btns"><button class="tbtn pri" type="button" id="bDraft">Draft with Hermes</button></div>
+          </div>
+          <div id="bForm" class="setup" style="padding:0" hidden>
+            <label class="fld"><span>Name</span><input id="bName" type="text" maxlength="40" placeholder="Weather Watch"></label>
+            <label class="fld"><span>When</span><input id="bSched" type="text" maxlength="60" placeholder="weekdays at 9am"></label>
+            <div class="btns" id="bPresets">
+              <button class="tbtn" type="button" data-s="every day at 8am">Daily 8am</button>
+              <button class="tbtn" type="button" data-s="weekdays at 9am">Weekdays 9am</button>
+              <button class="tbtn" type="button" data-s="every 2h">Every 2h</button>
+              <button class="tbtn" type="button" data-s="every monday at 10am">Mondays</button>
+            </div>
+            <label class="fld"><span>Instructions</span><textarea id="bPrompt" rows="6" placeholder="Check … and send me a short Telegram message with …"></textarea></label>
+            <div class="btns" id="bColors" role="group" aria-label="Building colour"></div>
+            <div class="btns"><button class="tbtn pri" type="button" id="bCreate">Create agent</button><button class="tbtn" type="button" id="bCancel">Cancel</button></div>
+          </div>
+          <p id="bMsg"></p>
         </div>
 
         <div class="tiles" id="ccTiles" role="group" aria-label="Choose an agent"></div>
+        <button class="tbtn" type="button" id="ccNew" style="width:100%">+ Build an agent</button>
 
         <div class="t-foot"><span id="ccOut">OUTPUT: REEL SCRIPT</span><span id="ccName">WRITERS' STUDIO</span></div>
       </div>
@@ -388,6 +443,30 @@
     </div>
     <div class="tk-setup" id="tkSetup" hidden></div>
     <div class="tk-next" id="tkNext"></div>
+    <section class="tk-panel tk-plan" aria-label="Plan with Hermes">
+      <h3><span>Plan with Hermes · Notion + Calendar</span></h3>
+      <form id="plForm" style="display:grid;gap:10px" autocomplete="off">
+        <textarea id="plReq" rows="2" aria-label="What should Hermes plan?" placeholder="Build me a 4-week Dynatrace Associate study schedule"></textarea>
+        <div class="pl-row">
+          <label>Start<input id="plStart" type="date"></label>
+          <label>Time<input id="plTime" type="time" value="19:00"></label>
+          <label>Length<select id="plMin"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></label>
+          <label>Days<select id="plDays"><option value="weekdays">Weekdays</option><option value="every day">Every day</option><option value="weekends">Weekends</option><option value="Monday, Wednesday and Friday">Mon · Wed · Fri</option><option value="Tuesday, Thursday and Saturday">Tue · Thu · Sat</option></select></label>
+        </div>
+        <div class="tk-actions2"><button class="tk-btn" type="submit" id="plDraft">Draft plan</button></div>
+      </form>
+      <div id="plPreview" style="display:grid;gap:10px" hidden>
+        <div><div class="pl-title" id="plTitle"></div><p class="tk-empty" id="plSummary" style="margin-top:4px"></p></div>
+        <div id="plList" style="display:grid;gap:6px;max-height:360px;overflow:auto"></div>
+        <div class="pl-opts">
+          <label id="plNotionPageL"><input type="checkbox" id="plNotionPage" checked> Create a Notion page with a checklist</label>
+          <label id="plNotionTasksL"><input type="checkbox" id="plNotionTasks"> Add each session as a Notion task</label>
+          <label id="plCalL"><input type="checkbox" id="plCal" checked> Add every session to Google Calendar</label>
+        </div>
+        <div class="tk-actions2"><button class="tk-btn" type="button" id="plSave">Save plan</button><button class="tk-btn alt" type="button" id="plDiscard">Discard</button></div>
+      </div>
+      <p class="tk-empty" id="plMsg" aria-live="polite"></p>
+    </section>
     <div class="tk-cols">
       <div class="tk-panel">
         <h3><span>Schedule · Google Calendar</span></h3>
@@ -467,7 +546,7 @@
     if (t < a.arrive) return "delivering";
     return "done";
   }
-  const LABEL = { scheduled: "Scheduled", working: "Working", delivering: "Delivering", done: "Done today", sending: "Sending", waiting: "Open", failed: "Failed" };
+  const LABEL = { scheduled: "Scheduled", working: "Working", delivering: "Delivering", done: "Done today", sending: "Sending", waiting: "Open", failed: "Failed", paused: "Paused" };
 
   // ---------- real status from the server (status.json in the repo) ----------
   let real = null, userPickedMode = false;
@@ -481,6 +560,11 @@
   }
   const pending = {};
   function effStatus(a, t) {
+    if (a.custom) {
+      if (pending[a.id]) return "working";
+      const j = realJob(a.id);
+      return j && REAL_MAP[j.state] ? REAL_MAP[j.state] : a.paused ? "paused" : "scheduled";
+    }
     if (pending[a.id]) return a.id === "post" ? "sending" : "working";
     if (mode === "live" && a.id !== "post") { const j = realJob(a.id); if (j && REAL_MAP[j.state]) return REAL_MAP[j.state]; }
     return status(a, t);
@@ -531,7 +615,8 @@
   let dkStep = 0;
   function sh(c) { const key = c + dkStep; let v = shadeMemo.get(key); if (!v) { v = dkStep ? mix(c, NIGHT, dkStep * 0.06) : c; shadeMemo.set(key, v); } return v; }
 
-  const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);
+  let rndState = 7;
+  const rnd = () => (rndState = (rndState * 16807) % 2147483647) / 2147483647;
   const pick = a => a[Math.floor(rnd() * a.length)];
 
   // ---------- town layout ----------
@@ -550,14 +635,20 @@
   };
   const HOUSE_ROOFS = ["#c95b5b", "#3f9b86", "#d9a441", "#6a78d1", "#b8577f"];
   const buildings = [], trees = [], lmById = {};
+  const BASE_LM = new Set(Object.keys(LM));
+  // blocks handed out, in order, to agents built from the app
+  const CUSTOM_BLOCKS = [[1, 3], [3, 1], [4, 2], [2, 4], [4, 3], [3, 4], [4, 1], [1, 4], [0, 2], [2, 0], [0, 3], [3, 0]];
+  const parkTile = new Set();
 
   function addBox(o) { o.seed = Math.floor(rnd() * 1e6); buildings.push(o); return o; }
+  function layoutTown() {
+  rndState = 7; buildings.length = 0; trees.length = 0; for (const k in lmById) delete lmById[k]; parkTile.clear();
   for (let bi = 0; bi < 6; bi++) for (let bj = 0; bj < 6; bj++) {
     const ox = bi * BLK + 1, oy = bj * BLK + 1;
     const lmId = Object.keys(LM).find(k => LM[k].block[0] === bi && LM[k].block[1] === bj);
     if (lmId) {
       const L = LM[lmId];
-      lmById[lmId] = addBox({ i: ox, j: oy, fw: 3, fd: 3, h: L.h, kind: "lm", id: lmId, body: L.body, side: L.side, roof: L.roof, pyramid: L.pyramid, win: "#cfe3f5" });
+      lmById[lmId] = addBox({ i: ox, j: oy, fw: 3, fd: 3, h: L.h, kind: "lm", id: lmId, body: L.body, side: L.side, roof: L.roof, pyramid: L.pyramid, custom: L.custom, win: "#cfe3f5" });
       trees.push([ox + 3.5, oy + 0.5], [ox + 3.5, oy + 2.5], [ox + 0.5, oy + 3.5], [ox + 2.5, oy + 3.5]);
       continue;
     }
@@ -578,14 +669,15 @@
       } else trees.push([i + 0.5, j + 0.5], [i + 1.5, j + 1.3], [i + 1.2, j + 0.4]);
     }
   }
-  const LOTX = LOT_BLOCK[0] * BLK + 1, LOTY = LOT_BLOCK[1] * BLK + 1;
-  const parkTile = new Set();
   for (let bi = 0; bi < 6; bi++) for (let bj = 0; bj < 6; bj++) {
     const ox = bi * BLK + 1, oy = bj * BLK + 1;
     for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) parkTile.add((ox + a) + "," + (oy + b));
   }
   buildings.forEach(b => { for (let a = 0; a < b.fw; a++) for (let c = 0; c < b.fd; c++) parkTile.delete((b.i + a) + "," + (b.j + c)); });
   for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) parkTile.delete((LOTX + a) + "," + (LOTY + b));
+  }
+  const LOTX = LOT_BLOCK[0] * BLK + 1, LOTY = LOT_BLOCK[1] * BLK + 1;
+  layoutTown();
 
   // front road tile of a landmark (the street below its block)
   const front = id => { const [bi, bj] = LM[id].block; return [bi * BLK + 2, bj * BLK + 5]; };
@@ -733,6 +825,12 @@
   }
   function roofProps(b, st, now) {
     const busy = st === "working" || st === "sending", top = P(b.i + b.fw / 2, b.j + b.fd / 2, b.h);
+    if (b.custom) {
+      const glow = busy ? .55 + .45 * Math.sin(now / 160) : .35;
+      ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(top[0], top[1] - 30); ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${.25 * glow})`; ctx.beginPath(); ctx.arc(top[0], top[1] - 32, 14, 0, 7); ctx.fill();
+      ctx.fillStyle = b.body; ctx.beginPath(); ctx.arc(top[0], top[1] - 32, 5, 0, 7); ctx.fill();
+    }
     if (b.id === "hq") {
       ctx.strokeStyle = "#1c2233"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(top[0], top[1] - 46); ctx.stroke();
       const glow = .55 + .45 * Math.sin(now / (busy ? 160 : 600));
@@ -845,7 +943,7 @@
         const i = fi + a, j = fj + b;
         items.push([i + j, () => drawBlob(...P(i, j), col, now + n * 300, busy)]);
       });
-      if (busy) overlay.push(["say", P(fi + .5, fj + .2, 34), SHOUT[id]]);
+      if (busy) overlay.push(["say", P(fi + .5, fj + .2, 34), SHOUT[id] || "working on it…"]);
       if (st === "failed") overlay.push(["warn", P(fi + .5, fj + .2, 34), "Help! Job failed"]);
     });
     // couriers carrying work to the next building
@@ -889,7 +987,7 @@
       const b = lmById[id], w = worldToScreen(...P(b.i + b.fw / 2, b.j + b.fd / 2, b.h + (b.pyramid ? 60 : 30) + (id === "hq" || id === "film" ? 50 : 0)));
       return { id, b, x: w[0], y: w[1], name: LM[id].name, st: lmStatus(id, t) };
     });
-    signs.push({ id: "lot", x: worldToScreen(...P(LOTX + 2, LOTY + 2, 90))[0], y: worldToScreen(...P(LOTX + 2, LOTY + 2, 90))[1], name: "Next agent", sub: "JOB SEARCH HELPER" });
+    signs.push({ id: "lot", x: worldToScreen(...P(LOTX + 2, LOTY + 2, 90))[0], y: worldToScreen(...P(LOTX + 2, LOTY + 2, 90))[1], name: "Next agent", sub: "BUILD ONE IN COMMAND" });
     signs.sort((p, q) => q.y - p.y);
     const placed = [];
     signs.forEach(sg => {
@@ -957,7 +1055,7 @@
   });
   const endPtr = e => {
     if (drag && !drag.moved && ptrs.size === 1 && performance.now() - drag.t < 500) {
-      const id = landmarkAt(...local(e)); if (id) select(B2CC[id], true);
+      const id = landmarkAt(...local(e)); if (id) select(B2CC[id] || id, true);
     }
     ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) drag = null;
   };
@@ -1009,7 +1107,8 @@
   });
   const lotCard = document.createElement("article"); lotCard.className = "card lot";
   lotCard.innerHTML = `<div class="top"><span class="dot" style="background:transparent;border:2px dashed var(--sign)"></span><div><h2>Empty lot</h2><div class="role">Next agent</div></div><span class="pill building">Planned</span></div>
-    <p>The crane is waiting for the job search helper. Each new automation gets its own building here.</p>`;
+    <p>The crane is waiting. Build a new agent from <b>Command → + Build an agent</b> and it moves into its own building.</p>`;
+  const customWrap = document.createElement("div"); customWrap.style.display = "contents"; roster.appendChild(customWrap);
   roster.appendChild(lotCard);
 
   let lastUi = 0, lastActive = null;
@@ -1020,6 +1119,12 @@
     const inWin = t >= T0 && t <= T1;
     head.style.left = pct(Math.min(T1, Math.max(T0, t))) + "%"; head.hidden = !inWin;
     tl.setAttribute("aria-valuenow", Math.round(t)); tl.setAttribute("aria-valuetext", fmt(t) + " IST");
+    customAgents.forEach(a => {
+      const s = effStatus(byId[a.id], t), p = cards[a.id];
+      if (p && p.dataset.s !== s) { p.dataset.s = s; p.className = "pill " + s; p.textContent = LABEL[s]; }
+      const j = real && real.jobs && real.jobs[a.id], txt = j && j.at ? `Last run ${fmtAt(j.at)} · ${j.state}${j.note ? " · " + j.note : ""}` : "";
+      if (lastLines[a.id] && lastLines[a.id].textContent !== txt) lastLines[a.id].textContent = txt;
+    });
     AGENTS.forEach(a => {
       const s = effStatus(a, t), p = cards[a.id];
       if (p.dataset.s !== s) { p.dataset.s = s; p.className = "pill " + s; p.textContent = LABEL[s]; }
@@ -1082,7 +1187,7 @@
     const c = ccById[current], a = cardFor(c), st = ccStatus(c), j = realJob(a.id === "post" ? "" : a.id);
     const info = [
       ["Focus", a.what],
-      ["Schedule", a.start != null ? `Daily ${fmt(a.start)} IST` : "On demand"],
+      ["Schedule", a.custom ? a.schedule : a.start != null ? `Daily ${fmt(a.start)} IST` : "On demand"],
       ["Status", LABEL[st] || st],
       ["Last run", j ? `${fmtAt(j.at)} · ${j.state}${j.note ? " · " + j.note : ""}` : "No report today"],
     ];
@@ -1184,7 +1289,7 @@
 
   // POWER = connection settings
   function openSetup(show) {
-    $("ccSetup").hidden = !show; $("ccRows").hidden = show;
+    $("ccSetup").hidden = !show; $("ccRows").hidden = show; $("ccBuild").hidden = true; $("ccNew").hidden = show;
     if (show) { $("ccWho").textContent = conn ? `Signed in to ${conn.url.replace(/^https?:\/\//, "")} until ${new Date(conn.exp * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.` : "Not signed in."; $("ccBot").value = store.get("bot", ""); $("ccSetupMsg").textContent = ""; }
   }
   $("ccPower").onclick = () => openSetup($("ccSetup").hidden);
@@ -1290,6 +1395,7 @@
       return `<div class="todo${n.done ? " done" : ""}"><button type="button" class="ck" data-id="${esc(n.id)}" aria-pressed="${n.done}" aria-label="${n.done ? "Mark not done" : "Mark done"}: ${esc(n.title)}">${n.done ? "✓" : ""}</button><span class="t">${esc(n.title)}</span><span>${dtxt ? `<span class="due${dcls}">${esc(dtxt)}</span>` : ""}${n.url ? ` <a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open in Notion">↗</a>` : ""}</span></div>`;
     }).join("") : `<p class="tk-empty">No notes yet. Add one above.</p>`;
     const ne = $("tkNotionErr"); ne.hidden = !track.errors.notion; ne.textContent = track.errors.notion ? track.errors.notion : "";
+    if (plan) planOptions();
   }
   document.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => { range = +b.dataset.range; store.set("range", range); renderTrack(); }));
   $("tkRefresh").addEventListener("click", () => loadTrack(true));
@@ -1321,6 +1427,155 @@
   });
   setInterval(() => { if (document.body.dataset.tab === "track" && !document.hidden) loadTrack(); }, 300000);
 
+  // ---------- Plan with Hermes: a dated schedule → Notion page, tasks, calendar ----------
+  let plan = null;
+  $("plStart").value = dayKey(Date.now() + 864e5);
+  function planOptions() {
+    const src = (track && !track.example && track.sources) || {};
+    const set = (id, ok, why) => { const box = $(id), lab = $(id + "L"); box.disabled = !ok; if (!ok) box.checked = false; lab.classList.toggle("off", !ok); lab.title = ok ? "" : why; };
+    set("plNotionPage", !!src.notion, "Set up Notion first (README step 8)");
+    set("plNotionTasks", !!src.notion, "Set up Notion first (README step 8)");
+    set("plCal", !!src.calendarWrite, "Calendar writing isn't set up (README step 8b)");
+    if (!src.calendarWrite) $("plCalL").lastChild.textContent = " Add to Google Calendar (not set up yet)";
+  }
+  function renderPlan() {
+    $("plPreview").hidden = !plan; $("plForm").hidden = !!plan;
+    if (!plan) return;
+    $("plTitle").textContent = plan.title || "Your plan";
+    $("plSummary").textContent = plan.summary || "";
+    $("plList").innerHTML = plan.sessions.map((x, i) => {
+      const d = new Date(x.date + "T12:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+      return `<div class="pl-sess"><span class="tm">${esc(d)}<br>${esc(x.start)}–${esc(x.end)}</span><span><div class="t">${esc(x.title)}</div>${x.details ? `<div class="d">${esc(x.details)}</div>` : ""}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(x.title)}">×</button></div>`;
+    }).join("");
+    planOptions();
+  }
+  $("plList").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (!b) return; plan.sessions.splice(+b.dataset.i, 1); if (!plan.sessions.length) plan = null; renderPlan(); });
+  $("plForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const request = $("plReq").value.trim();
+    if (request.length < 8) { $("plMsg").textContent = "Tell Hermes what to plan, e.g. a certification, a habit or a project."; return; }
+    if (!conn) return;
+    $("plDraft").disabled = true; $("plMsg").textContent = "Hermes is building your schedule…";
+    try {
+      const r = await api("/api/plan/draft", { method: "POST", body: JSON.stringify({ request, start: $("plStart").value, time: $("plTime").value, minutes: $("plMin").value, days: $("plDays").value }) }, 250000);
+      plan = r.plan; renderPlan();
+      $("plMsg").textContent = `${plan.sessions.length} sessions. Remove any you don't want, choose where to save it, then Save plan.`;
+    } catch (err) { $("plMsg").textContent = err.message; }
+    finally { $("plDraft").disabled = false; }
+  });
+  $("plDiscard").onclick = () => { plan = null; renderPlan(); $("plMsg").textContent = ""; };
+  $("plSave").onclick = async () => {
+    const opts = { notionPage: $("plNotionPage").checked, notionTasks: $("plNotionTasks").checked, calendar: $("plCal").checked };
+    if (!opts.notionPage && !opts.notionTasks && !opts.calendar) { $("plMsg").textContent = "Pick at least one place to save it."; return; }
+    $("plSave").disabled = true; $("plMsg").textContent = `Saving ${plan.sessions.length} sessions… this can take a minute.`;
+    try {
+      const r = await tapi("/api/plan", { method: "POST", body: JSON.stringify({ plan, ...opts }) });
+      const done = [];
+      if (r.notionUrl) done.push(`<a href="${esc(r.notionUrl)}" target="_blank" rel="noopener">Notion page ↗</a>`);
+      if (r.tasks) done.push(`${r.tasks} Notion tasks`);
+      if (r.events) done.push(`${r.events} calendar events`);
+      const errs = Object.values(r.errors || {});
+      $("plMsg").innerHTML = (done.length ? "Saved: " + done.join(" · ") + "." : "Nothing was saved.") + (errs.length ? `<br><span style="color:#ff6b5b">${errs.map(esc).join("<br>")}</span>` : "") + (r.events ? "<br>Google can take a few hours to show new events in the app's calendar view." : "");
+      if (done.length) { plan = null; renderPlan(); $("plReq").value = ""; setTimeout(() => loadTrack(true), 1500); }
+    } catch (err) { $("plMsg").textContent = err.message; }
+    finally { $("plSave").disabled = false; }
+  };
+
+  // ---------- agents built from the app ----------
+  let customAgents = [];
+  const COLORS = ["#5fd08a", "#5bb6ff", "#ff8a5b", "#b79cff", "#ffd36b", "#f59bd8", "#2fb3a3", "#e84d4d"];
+  let bColor = COLORS[0];
+  function applyCustom(list) {
+    // forget the previous set
+    Object.keys(LM).forEach(k => { if (!BASE_LM.has(k)) delete LM[k]; });
+    for (const k in byId) if (byId[k].custom) delete byId[k];
+    for (let i = CC.length - 1; i >= 0; i--) if (CC[i].custom) { delete ccById[CC[i].id]; CC.splice(i, 1); }
+    customAgents = list.slice(0, CUSTOM_BLOCKS.length);
+    customAgents.forEach((a, n) => {
+      const side = mix(a.color, "#000000", .2), roof = mix(a.color, "#000000", .35);
+      const toHex = c => "#" + c.match(/\d+/g).map(v => (+v).toString(16).padStart(2, "0")).join("");
+      LM[a.id] = { block: CUSTOM_BLOCKS[n], h: 90 + (a.id.length * 7) % 60, body: a.color, side: toHex(side), roof: toHex(roof), name: a.name, custom: true };
+      byId[a.id] = { id: a.id, custom: true, paused: a.paused, schedule: a.schedule, name: a.name, body: a.color, what: a.prompt.slice(0, 160), out: "Telegram" };
+      const c = { id: a.id, b: a.id, custom: true, tag: a.name.split(/\s+/)[0].slice(0, 10), label: a.name, out: "Telegram",
+        tries: ["Run it now and show me the result", "What did you find last time?", "Change the schedule to weekdays only"],
+        ctx: `the "${a.name}" agent: a Hermes scheduled job named hv-${a.id} (${a.schedule}), delivering to Telegram. Its instructions are: ${a.prompt.slice(0, 700)}` };
+      CC.push(c); ccById[c.id] = c;
+    });
+    layoutTown(); groundStep = -1;
+    if (!ccById[current]) current = "writer";
+    renderCustomCards(); renderTiles(); renderRows(); renderHead();
+  }
+  function renderCustomCards() {
+    customWrap.innerHTML = "";
+    customAgents.forEach(a => {
+      const el = document.createElement("article"); el.className = "card";
+      el.innerHTML = `<div class="top"><span class="dot" style="background:${esc(a.color)}"></span><div><h2>${esc(a.name)}</h2><div class="role">Built in the app</div></div><span class="pill">…</span></div>
+        <div class="prompt">${esc(a.prompt)}</div>
+        <div class="meta"><div>Runs <span>${esc(a.schedule)}</span></div><div>Output <span>Telegram</span></div></div>
+        <div class="acts"><button type="button" data-act="run">Run now</button><button type="button" data-act="${a.paused ? "resume" : "pause"}">${a.paused ? "Resume" : "Pause"}</button><button type="button" data-act="talk">Talk to it</button><button type="button" class="warn" data-act="delete">Delete</button></div>
+        <div class="last"></div>`;
+      el.dataset.id = a.id;
+      customWrap.appendChild(el); cards[a.id] = el.querySelector(".pill"); lastLines[a.id] = el.querySelector(".last");
+    });
+  }
+  customWrap.addEventListener("click", async e => {
+    const btn = e.target.closest("button[data-act]"); if (!btn) return;
+    const id = btn.closest(".card").dataset.id, act = btn.dataset.act;
+    if (act === "talk") { select(id); setTab("cmd"); return; }
+    if (act === "delete" && btn.dataset.sure !== "1") { btn.dataset.sure = "1"; btn.textContent = "Tap again to delete"; setTimeout(() => { btn.dataset.sure = ""; btn.textContent = "Delete"; }, 4000); return; }
+    btn.disabled = true; const label = btn.textContent; btn.textContent = "…";
+    try {
+      const r = await api(`/api/agents/${id}/${act}`, { method: "POST", body: "{}" }, 60000);
+      if (act === "run") { pending[id] = true; setTimeout(() => { delete pending[id]; }, 20000); btn.textContent = "Started"; setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2500); return; }
+      applyCustom(r.agents || []);
+    } catch (err) { btn.textContent = label; btn.disabled = false; alertRow(err.message); }
+  });
+  function alertRow(msg) { const l = document.createElement("p"); l.className = "note"; l.style.color = "#ff6b5b"; l.textContent = msg; customWrap.prepend(l); setTimeout(() => l.remove(), 6000); }
+  async function loadAgents() { if (!conn) return; try { const r = await api("/api/agents"); applyCustom(r.agents || []); } catch (e) {} }
+
+  // builder panel
+  function openBuild(show) {
+    $("ccBuild").hidden = !show; $("ccRows").hidden = show; $("ccSetup").hidden = true;
+    $("ccNew").hidden = show; $("bMsg").textContent = "";
+    if (show) { setBuildMode("auto"); $("bDesc").focus(); }
+  }
+  function setBuildMode(m) {
+    $("bModeAuto").setAttribute("aria-pressed", m === "auto"); $("bModeManual").setAttribute("aria-pressed", m === "manual");
+    $("bAuto").hidden = m !== "auto"; $("bForm").hidden = m === "auto";
+    if (m === "manual") $("bName").focus();
+  }
+  $("bColors").innerHTML = COLORS.map(c => `<button type="button" class="swatch" data-c="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c === bColor}"></button>`).join("");
+  $("bColors").addEventListener("click", e => { const b = e.target.closest(".swatch"); if (!b) return; bColor = b.dataset.c; $("bColors").querySelectorAll(".swatch").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  $("bPresets").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (b) $("bSched").value = b.dataset.s; });
+  $("ccNew").onclick = () => openBuild(true);
+  $("bCancel").onclick = () => openBuild(false);
+  $("bModeAuto").onclick = () => setBuildMode("auto");
+  $("bModeManual").onclick = () => setBuildMode("manual");
+  $("bDraft").onclick = async () => {
+    const d = $("bDesc").value.trim(); if (d.length < 8) { $("bMsg").textContent = "Describe it in a sentence or two."; return; }
+    $("bDraft").disabled = true; $("bMsg").textContent = "Hermes is drafting your agent…";
+    try {
+      const r = await api("/api/agents/draft", { method: "POST", body: JSON.stringify({ description: d }) }, 200000);
+      $("bName").value = r.name || ""; $("bSched").value = r.schedule || ""; $("bPrompt").value = r.prompt || "";
+      $("bAuto").hidden = true; $("bForm").hidden = false; $("bMsg").textContent = "Check the draft, change anything you like, then create it.";
+    } catch (err) { $("bMsg").textContent = err.message; }
+    finally { $("bDraft").disabled = false; }
+  };
+  $("bCreate").onclick = async () => {
+    const body = { name: $("bName").value.trim(), schedule: $("bSched").value.trim(), prompt: $("bPrompt").value.trim(), color: bColor };
+    if (!body.name || !body.schedule || body.prompt.length < 10) { $("bMsg").textContent = "Fill in the name, when it runs, and its instructions."; return; }
+    $("bCreate").disabled = true; $("bMsg").textContent = "Creating the job on your server…";
+    try {
+      const r = await api("/api/agents", { method: "POST", body: JSON.stringify(body) }, 120000);
+      await loadAgents();
+      $("bName").value = $("bSched").value = $("bPrompt").value = $("bDesc").value = "";
+      openBuild(false); select(r.agent.id);
+      push(r.agent.id, { r: "ai", t: `${r.agent.name} is built. It runs ${r.agent.schedule} and sends its results to Telegram. Its building is up in the city.` }); renderRows();
+      const c = lmCenter(r.agent.id); if (c) camTarget = { x: c[0], y: c[1] };
+    } catch (err) { $("bMsg").textContent = err.message; }
+    finally { $("bCreate").disabled = false; }
+  };
+
   // ---------- login gate ----------
   function lock(msg) {
     document.body.classList.add("locked");
@@ -1330,10 +1585,10 @@
   }
   function signOut(msg) {
     conn = null; store.del("session"); store.del("chats"); for (const k in chats) delete chats[k];
-    track = null; real = null; online = false; renderHead(); renderRows();
+    track = null; real = null; online = false; if (customAgents.length) applyCustom([]); renderHead(); renderRows();
     lock(msg);
   }
-  function unlock() { document.body.classList.remove("locked"); ping(); pullStatus(); if (document.body.dataset.tab === "track") loadTrack(true); requestAnimationFrame(fit); }
+  function unlock() { document.body.classList.remove("locked"); ping(); pullStatus(); loadAgents(); if (document.body.dataset.tab === "track") loadTrack(true); requestAnimationFrame(fit); }
   $("gForm").addEventListener("submit", async e => {
     e.preventDefault();
     const url = $("gUrl").value.trim().replace(/\/+$/, ""), password = $("gPass").value, code = $("gCode").value.trim();

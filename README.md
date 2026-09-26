@@ -1,6 +1,14 @@
 # Hermesville
 
-**Your AI agents, living in a city.** Hermesville is a private phone app for
+> **Early project, built while learning.** Hermesville works, but it's still
+> changing: expect rough edges, breaking changes between versions, and setup
+> steps that may need adjusting for your server. Issues and suggestions are welcome.
+>
+> **It's a web app, not a native mobile app.** There's nothing to download from
+> the Play Store or App Store. It runs in your browser and can be added to your
+> home screen, where it opens full screen like an app (a PWA).
+
+**Your AI agents, living in a city.** Hermesville is a private web app for
 [Hermes Agent](https://hermes-agent.nousresearch.com/) running on your own
 server. Every automation is a building: you watch the workers write, film and
 deliver your morning to Telegram, tap a building to chat with that agent, and
@@ -11,7 +19,9 @@ password and a 2FA code.
 
 - **City:** an animated isometric town. Each agent is a landmark that lights up while it works and fills with smoke when a job fails.
 - **Command:** a green field terminal. Pick an agent, or tap its building, and message it. Each agent keeps its own thread.
+- **Build agents from your phone:** describe one in a sentence and Hermes drafts it, or fill in the name, schedule and instructions yourself. It becomes a Hermes scheduled job, gets its own building, and can be run, paused or deleted from the app.
 - **My Tracking:** today, tomorrow or 7 days of Google Calendar, plus a Notion database you can tick off and add to.
+- **Plan with Hermes:** ask for something like *"Build me a Dynatrace Associate study schedule"*. Hermes drafts dated sessions; you review them and save the plan as a Notion page with a checklist, as Notion tasks, and as Google Calendar events.
 - **Private by design:** the app is public but empty. Your data, keys and agents stay on your server behind a login with 2FA.
 - **Free to run:** Oracle Cloud's Always Free server, free Tailscale, GitHub Pages, and free model tiers if you want them.
 
@@ -28,9 +38,11 @@ password and a 2FA code.
    4. [Install Hermes and choose a model](#4-install-hermes-and-choose-a-model)
    5. [Connect Telegram](#5-connect-telegram)
    6. [Install the Hermesville back end (password, 2FA, Tailscale)](#6-install-the-hermesville-back-end)
-   7. [Log in and install the phone app](#7-log-in-and-install-the-phone-app)
+   7. [Log in and add it to your home screen](#7-log-in-and-add-it-to-your-home-screen)
    8. [Optional: Google Calendar and Notion](#8-optional-google-calendar-and-notion)
+      - [8b. Let Hermes add plans to your calendar](#8b-let-hermes-add-plans-to-your-calendar)
    9. [Optional: the starter agents](#9-optional-the-starter-agents)
+   10. [Build your own agents from the app](#10-build-your-own-agents-from-the-app)
 4. [Security](#security)
 5. [Day-to-day commands](#day-to-day-commands)
 6. [Troubleshooting](#troubleshooting)
@@ -42,7 +54,7 @@ password and a 2FA code.
 ## How it works
 
 ```
- Your phone (Hermesville app, from GitHub Pages: public, holds no data)
+ Your browser (Hermesville web app, from GitHub Pages: public, holds no data)
         │  HTTPS
         ▼
  Tailscale Funnel ── https://<name>.<tailnet>.ts.net
@@ -53,7 +65,9 @@ password and a 2FA code.
  │     ├─ /auth/login     password + 2FA code → session token  │
  │     ├─ /api/chat       → Hermes API server   127.0.0.1:8642 │
  │     ├─ /api/tracking/* → tracker.py          127.0.0.1:8650 │
- │     └─ /api/status     → ~/hermesville/status.json          │
+ │     ├─ /api/plan/draft → Hermes drafts a dated schedule      │
+ │     ├─ /api/status     → ~/hermesville/status.json          │
+ │     └─ /api/agents     → `hermes cron` (build/run/pause)    │
  │                                                             │
  │  Hermes Agent ── Telegram bot, scheduled jobs, your model   │
  └─────────────────────────────────────────────────────────────┘
@@ -73,7 +87,8 @@ keeps a session token that expires.
 | **HTTPS address** | Tailscale (free personal plan) | No domain and no open ports needed |
 | **App hosting** | GitHub Pages | Free for public repositories |
 | **Messages** | Telegram bot | Free |
-| **Phone** | An authenticator app | Google Authenticator, Microsoft Authenticator, Authy, 2FAS, … |
+| **Browser** | Any modern browser | Chrome, Edge, Safari or Firefox, on a phone or a computer |
+| **2FA** | An authenticator app | Google Authenticator, Microsoft Authenticator, Authy, 2FAS, … |
 
 ---
 
@@ -226,7 +241,7 @@ The script walks you through it:
 All private parts are private.
 ```
 
-At the end it prints your **server address**, e.g. `https://hermesville.tail1234.ts.net`.
+At the end it prints your **server address**, e.g. `https://hermesville.tailXXXX.ts.net`.
 Keep it to yourself.
 
 To change your password or 2FA later:
@@ -237,13 +252,19 @@ python3 ~/hermesville/gateway.py setup-2fa
 systemctl --user restart hermesville-gateway
 ```
 
-### 7. Log in and install the phone app
+### 7. Log in and add it to your home screen
 
-1. Open `https://<your-username>.github.io/hermesville/` on your phone.
+1. Open `https://<your-username>.github.io/hermesville/` in your browser, on a phone or a computer.
 2. Enter your **server address**, **password** and the current **2FA code**.
-3. Install it as an app:
-   - **Android (Chrome):** ⋮ → **Install app**. Make sure **Desktop site** is unticked.
+3. Optional: add it to your home screen so it opens full screen like an app.
+   This is a shortcut to the web app, not an app-store install.
+   - **Android (Chrome):** ⋮ → **Install app** or **Add to Home screen**. Make sure **Desktop site** is unticked.
    - **iPhone (Safari):** Share → **Add to Home Screen**.
+   - **Desktop (Chrome/Edge):** the install icon in the address bar.
+
+Because it's a web app, it needs a network connection to your server,
+it can't send push notifications (Telegram does that job), and updates arrive
+automatically when you push to GitHub.
 
 Sessions last 14 days. **Command → POWER → Log out** ends yours.
 
@@ -275,6 +296,46 @@ systemctl --user restart hermesville-tracker
 Tap **Refresh** in **My Tracking**. For several calendars, separate their
 addresses with commas.
 
+**Plan with Hermes:** in **My Tracking**, describe what you want to plan, e.g.
+*"Build me a 4-week Dynatrace Associate study schedule"* or *"A beginner 5k running
+plan"*. Then pick a start date, time, session length and days, and tap **Draft plan**.
+Hermes returns dated sessions, each with a topic and what to do. Remove any you
+don't want, then choose where to save it:
+
+- **Create a Notion page with a checklist:** one page in your database, grouped by week.
+- **Add each session as a Notion task:** each one has its date, so it appears in the notes list.
+- **Add every session to Google Calendar:** needs step 8b.
+
+#### 8b. Let Hermes add plans to your calendar
+
+The secret iCal address is read-only. To create events, give the server a Google
+**service account**, a robot account that can edit only the calendars you share
+with it. It's free.
+
+1. Go to **console.cloud.google.com** → create a project (e.g. `hermesville`) →
+   **APIs & Services → Library** → enable **Google Calendar API**.
+2. **IAM & Admin → Service Accounts → Create service account** (name it `hermesville`,
+   skip the roles) → open it → **Keys → Add key → Create new key → JSON**. A `.json` file downloads.
+3. In **Google Calendar → Settings →** your calendar **→ Share with specific people**,
+   add the service account's email (`hermesville@<project>.iam.gserviceaccount.com`)
+   with **Make changes to events**.
+4. Copy the key to your server and lock it down:
+
+```bash
+# (PC)
+scp -i <your-ssh-key> hermesville-*.json <user>@<server-ip>:~/hermesville/gcal-sa.json
+# (server)
+chmod 600 ~/hermesville/gcal-sa.json
+echo "GCAL_SA_FILE=$HOME/hermesville/gcal-sa.json" >> ~/.hermes/.env
+echo 'GCAL_CALENDAR_ID=you@gmail.com' >> ~/.hermes/.env     # Settings → Integrate calendar → Calendar ID
+systemctl --user restart hermesville-tracker
+```
+
+The **Add every session to Google Calendar** box becomes active. Events are
+tagged `hermesville` so you can find them. Google can take a few hours to show
+new events through the iCal address, so they may appear in the app later than
+in Google Calendar itself.
+
 ### 9. Optional: the starter agents
 
 [`docs/agents.md`](docs/agents.md) has copy-paste prompts and scripts for the
@@ -284,7 +345,32 @@ three agents in the demo:
 - **Film Studio** turns it into a 1080×1920 video with voice, stock clips and captions, and sends it to Telegram (07:10).
 - **Newsroom** sends an AI news digest (08:00).
 
-It also explains how to add your own buildings.
+It also explains how to add your own buildings in code.
+
+### 10. Build your own agents from the app
+
+Open **Command → + Build an agent**. There are two ways:
+
+- **Describe it:** write what it should do and when, e.g. *"Every weekday at 9am,
+  check the weather in my city and tell me if I need an umbrella"*. Hermes drafts a
+  name, a schedule and full instructions. Nothing is created until you review the
+  draft and tap **Create agent**.
+- **Build it yourself:** fill in the name, when it runs (`every day at 8am`,
+  `weekdays at 9:30am`, `every 2h`, `every monday at 10am`, or a cron expression)
+  and its instructions.
+
+On **Create agent**, the gateway runs `hermes cron create … --name hv-<id> --deliver telegram`
+on your server. The job reports to the city automatically: its building lights up
+while it runs and fills with smoke if it fails. You can then:
+
+- **Talk to it** from its Command tile. The thread knows its schedule and instructions.
+- **Run now, Pause/Resume or Delete** it from the **Agents** tab.
+- Manage it on the server too: `hermes cron list` shows it as `hv-<id>`.
+
+Write instructions as if the agent has no memory: say exactly what to check and
+how the Telegram message should look. The city has room for 12 app-built agents.
+Anything an agent does runs on your server with Hermes's permissions, so only
+create agents you understand, and keep `approval_mode` on.
 
 ---
 
@@ -324,7 +410,7 @@ journalctl --user -u hermesville-gateway -f
 systemctl --user restart hermes-gateway hermesville-tracker hermesville-gateway
 
 # scheduled jobs
-hermes cron list
+hermes cron list            # app-built agents show up as hv-<name>
 hermes cron run <id>
 
 # what the internet can see
@@ -353,14 +439,19 @@ python3 ~/hermesville/report_status.py writer running|done|failed "note"
 | Calendar: 404 | You copied the public address. Use **Secret address in iCal format** (contains `private-`) |
 | Notion error | Share the database with your integration (**••• → Connections**) and check `NOTION_DB_ID` |
 | Reel video: `No such filter: drawtext` | Already handled: captions are drawn with Pillow. Update `make_reel.py` |
+| Build an agent: "hermes command not found" | The gateway can't find the `hermes` binary. Add `HERMES_BIN=/full/path/to/hermes` (from `which hermes`) to `~/.hermes/.env` and restart `hermesville-gateway` |
+| Build an agent: "not in the expected format" | The model didn't return clean JSON. Try again, pick a stronger model, or use **Build it yourself** |
+| Plan: "Add to Google Calendar (not set up yet)" | Finish step 8b and restart `hermesville-tracker` |
+| Plan: `Google said 403` / `404` | Share the calendar with the service account (**Make changes to events**) and check `GCAL_CALENDAR_ID` |
+| Plan events missing in the app | They're in Google Calendar already; the iCal address can lag a few hours |
 
 ---
 
 ## Project layout
 
 ```
-index.html              the whole app: city, command center, My Tracking, login
-manifest.webmanifest    install-as-app metadata
+index.html              the whole web app: city, command center, My Tracking, login
+manifest.webmanifest    "add to home screen" metadata
 sw.js                   service worker: loads the newest version, works offline
 icons/                  app icons
 server/
@@ -376,12 +467,24 @@ docs/env.example        every setting explained (the real file stays on your ser
 
 The server code uses only Python's standard library, with nothing to `pip install`.
 
+## Known limitations
+
+- **Web app only.** No Play Store or App Store version, and no push notifications; Telegram delivers alerts.
+- **One user.** One password and one 2FA secret per server; there are no separate accounts.
+- **Needs your server online.** Without it, the app shows the login screen or an offline badge.
+- **Simulated city.** Buildings show real job status only for jobs that call `report_status.py` (app-built agents do this automatically); the starter agents otherwise follow their schedule.
+- **Tested setups:** Oracle Cloud Ampere A1 with Oracle Linux 9 and Ubuntu 24.04, Chrome on Android and desktop. Other setups may need small changes.
+- **Early software.** Written while learning. Review the code before trusting it with anything important.
+
 ## Roadmap
 
 - [x] Isometric city with live job status
 - [x] Command center: tap a building to message that agent
 - [x] My Tracking: Google Calendar + Notion
 - [x] Private back end with password + 2FA
+- [x] Build agents from the app (describe it or build it yourself)
+- [x] Plan with Hermes: schedules saved to Notion and Google Calendar
+- [ ] Undo a saved plan (remove its events and tasks)
 - [ ] Click a building to see its last output
 - [ ] Night shift: workers go home after the last job
 - [ ] Passkey login

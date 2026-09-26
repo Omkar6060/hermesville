@@ -10,24 +10,25 @@ gateway (after you log in), so nothing about your jobs is published anywhere.
     python3 report_status.py film done "reel sent"
     python3 report_status.py writer failed "no topic found"
 
-Jobs: writer, film, news. Never fails the calling job: errors are printed and
+Jobs: writer, film, news, or the id of an agent built in the app. Never fails the calling job: errors are printed and
 the script exits 0.
 """
 import datetime as dt
 import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
 
-JOBS = {"writer", "film", "news"}
+JOB_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,39}$")   # writer, film, news, or an agent built in the app
 STATES = {"running", "done", "failed"}
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 FILE = Path.home() / "hermesville" / "status.json"
 
 
 def main():
-    if len(sys.argv) < 3 or sys.argv[1] not in JOBS or sys.argv[2] not in STATES:
+    if len(sys.argv) < 3 or not JOB_RE.match(sys.argv[1]) or sys.argv[2] not in STATES:
         print(__doc__)
         return
     job, state, note = sys.argv[1], sys.argv[2], " ".join(sys.argv[3:])[:120]

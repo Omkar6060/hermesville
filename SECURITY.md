@@ -1,6 +1,6 @@
 # Security
 
-Hermesville gives a phone app control over an AI agent that can run commands
+Hermesville gives a web app control over an AI agent that can run commands
 on your server. Treat your deployment like a remote shell.
 
 ## Design
@@ -13,6 +13,8 @@ on your server. Treat your deployment like a remote shell.
   can't be reused). 5 failed attempts per address (30 overall) lock logins for 15 minutes.
 - **Sessions:** HMAC-signed tokens, 14 days by default, revocable one by one
   (Log out) or all at once (`gateway.py logout-all`).
+- **Agent builder:** only a logged-in session can create, run, pause or delete agents. The gateway calls `hermes cron` with an argument list (no shell), validates names and schedules, and caps the city at 12 agents.
+- **Calendar writing:** optional. It uses a Google service account that can only edit calendars you explicitly share with it. Its key stays in `~/hermesville/gcal-sa.json` (mode 600) and is used to sign short-lived tokens with `openssl`.
 - **Secrets** (model API key, Telegram token, Hermes key, Notion token, calendar
   address) live only in `~/.hermes/.env` on the server, mode 600.
 
