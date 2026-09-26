@@ -32,6 +32,20 @@ The page is a single HTML file with no build step.
 
 **Replay this morning** plays 06:55 to 08:15 in about a minute. **Live now** follows the real IST clock, with day and night in the sky. Click the timeline to jump to any moment.
 
+## Security
+
+Hermesville is split into a public front end and a private back end.
+
+- **Front end:** the static app on GitHub Pages. It holds no data and no keys; anyone who opens it sees only a login screen.
+- **Back end:** `server/gateway.py` on the Oracle server, the only thing published through Tailscale Funnel. Hermes (`127.0.0.1:8642`) and the tracker (`127.0.0.1:8650`) listen on the server only.
+- **Login:** password (scrypt-hashed) plus a 6-digit 2FA code (TOTP; codes can't be reused). Five wrong attempts lock logins for 15 minutes.
+- **Sessions:** signed tokens that expire after 14 days and can be revoked (`Log out`, or `gateway.py logout-all` for every device). The phone never holds the Hermes key, the Notion token or the calendar address.
+- **Status:** `report_status.py` writes `~/hermesville/status.json` on the server; nothing about your jobs is published.
+
+```
+bash server/enable_gateway.sh
+```
+
 ## Phone app
 
 Hermesville installs as an app from GitHub Pages. It has a home-screen icon, opens full screen, and updates itself on every push.
@@ -41,7 +55,7 @@ Hermesville installs as an app from GitHub Pages. It has a home-screen icon, ope
 
 ## Live status
 
-The server writes `status.json` to this repo after each job using `server/report_status.py`. The app reads it every minute and whenever you open it. When a job fails, its building fills with smoke and its card turns red. With no report for today, the app falls back to the schedule simulation.
+The server writes `~/hermesville/status.json` after each job using `server/report_status.py`, and the app reads it through the gateway every minute and whenever you open it. When a job fails, its building fills with smoke and its card turns red. With no report for today, the app falls back to the schedule simulation.
 
 ```
 python3 ~/hermesville/report_status.py film running
@@ -49,7 +63,7 @@ python3 ~/hermesville/report_status.py film done "reel sent"
 python3 ~/hermesville/report_status.py news failed "search quota hit"
 ```
 
-`server/install_reporter.sh` installs the script and wires it into the reel video service. The GitHub token lives only in `~/.hermes/.env` on the server.
+`server/install_reporter.sh` wires it into the reel video service.
 
 ## Command center
 

@@ -171,6 +171,24 @@
   .tlink { color: var(--t-green); }
   @media (prefers-reduced-motion: reduce) { .online.wait, .dots::after { animation: none; } }
 
+  /* ---------- login gate ---------- */
+  .gate { display: none; min-height: calc(100vh - 80px); place-items: center; }
+  body.locked .gate { display: grid; }
+  body.locked .wrap, body.locked .tabbar { display: none !important; }
+  body.locked { padding-bottom: 20px; }
+  .gate-card { width: min(400px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 22px; display: grid; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+  .gate-card h1 { font-size: 38px; }
+  .gate-card p { margin: 0; color: var(--muted); }
+  .gate-card label { display: grid; gap: 6px; font: 700 12px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .gate-card input { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; color: var(--text); font: 500 16px var(--body); padding: 12px 14px; text-transform: none; letter-spacing: 0; }
+  .gate-card input#gCode { font: 700 22px var(--mono); letter-spacing: .3em; text-align: center; }
+  .gate-card input:focus { outline: 2px solid var(--go); outline-offset: 1px; }
+  .gate-card button { font: 800 15px var(--body); border: 0; border-radius: 12px; padding: 13px; cursor: pointer; background: var(--sign); color: #2a2206; }
+  .gate-card button:disabled { opacity: .6; cursor: default; }
+  .gate-card button:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+  .gate-msg { min-height: 1.4em; font-size: 14px; color: #ff6b5b; }
+  .gate-lock { display: flex; align-items: center; gap: 8px; font: 800 11px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--ok); }
+
   /* ---------- My Tracking ---------- */
   .track { display: grid; gap: 14px; width: 100%; max-width: 1040px; margin-inline: auto; }
   .tk-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 16px; }
@@ -281,6 +299,19 @@
 </head>
 <body>
 
+<main class="gate" id="gate" aria-label="Log in">
+  <form class="gate-card" id="gForm" autocomplete="on">
+    <div class="gate-lock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private</div>
+    <h1>Hermesville</h1>
+    <p>Log in to see your agents, schedule and notes.</p>
+    <label>Server address<input id="gUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://hermes-server.tailXXXX.ts.net" required></label>
+    <label>Password<input id="gPass" type="password" autocomplete="current-password" required></label>
+    <label>2FA code<input id="gCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required></label>
+    <button type="submit" id="gBtn">Log in</button>
+    <div class="gate-msg" id="gMsg" role="alert"></div>
+  </form>
+</main>
+
 <div class="wrap">
   <header>
     <div>
@@ -325,14 +356,12 @@
         <div class="panel rows" id="ccRows" aria-live="polite"></div>
 
         <div class="panel setup" id="ccSetup" hidden>
-          <div class="eyebrow">Connect your server</div>
-          <p>The command center talks to Hermes through its API server. The key stays on this phone only.</p>
-          <label class="fld"><span>Server URL</span><input id="ccUrl" type="url" placeholder="https://hermes-server.tailXXXX.ts.net" inputmode="url"></label>
-          <label class="fld"><span>API key</span><input id="ccKey" type="password" placeholder="API_SERVER_KEY from ~/.hermes/.env"></label>
+          <div class="eyebrow">Session</div>
+          <p id="ccWho">Signed in.</p>
           <label class="fld"><span>Telegram bot (optional)</span><input id="ccBot" type="text" placeholder="your_bot_username"></label>
-          <div class="btns"><button class="tbtn pri" type="button" id="ccSave">Save + test</button><button class="tbtn" type="button" id="ccForget">Forget</button><button class="tbtn" type="button" id="ccClose">Close</button></div>
+          <div class="btns"><button class="tbtn pri" type="button" id="ccSave">Save + test</button><button class="tbtn" type="button" id="ccForget">Log out</button><button class="tbtn" type="button" id="ccClose">Close</button></div>
           <p id="ccSetupMsg"></p>
-          <p>App version 8 · type <code>/clear</code> to wipe a thread</p>
+          <p>App version 9 · type <code>/clear</code> to wipe a thread</p>
         </div>
 
         <div class="tiles" id="ccTiles" role="group" aria-label="Choose an agent"></div>
@@ -458,7 +487,9 @@
   }
   async function pullStatus() {
     try {
-      const r = await fetch("status.json?ts=" + Date.now(), { cache: "no-store" });
+      if (!conn) return;
+      const r = await fetch(base() + "/api/status", { cache: "no-store", headers: { "Authorization": "Bearer " + conn.token } });
+      if (r.status === 401) { signOut("Your session ended. Log in again."); return; }
       if (!r.ok) return;
       real = await r.json();
       if (real && real.updated && !userPickedMode && mode !== "live") setMode("live");
@@ -1027,7 +1058,8 @@
     set(k, v) { try { localStorage.setItem("hv." + k, JSON.stringify(v)); } catch (e) {} },
     del(k) { try { localStorage.removeItem("hv." + k); } catch (e) {} },
   };
-  let conn = store.get("conn", null), online = false, current = store.get("agent", "writer");
+  store.del("conn");   // older versions kept the master Hermes key here; never again
+  let conn = store.get("session", null), online = false, current = store.get("agent", "writer");
   if (!ccById[current]) current = "writer";
   const chats = store.get("chats", {});
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1107,19 +1139,19 @@
   async function api(path, opts = {}, ms = 15000) {
     const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
     try {
-      const r = await fetch(base() + path, { ...opts, signal: ctl.signal, headers: { "Authorization": "Bearer " + conn.key, "Content-Type": "application/json", ...(opts.headers || {}) } });
-      if (r.status === 401 || r.status === 403) throw new Error("Key rejected. Check API_SERVER_KEY on the server and in POWER settings.");
+      const r = await fetch(base() + path, { ...opts, signal: ctl.signal, headers: { "Authorization": "Bearer " + conn.token, "Content-Type": "application/json", ...(opts.headers || {}) } });
+      if (r.status === 401) { signOut("Your session ended. Log in again."); throw new Error("Session ended."); }
       if (!r.ok) throw new Error(`Server answered ${r.status}. ${(await r.text()).slice(0, 160)}`);
       return r.json();
     } catch (e) {
       if (e.name === "AbortError") throw new Error("No answer in time. The job may still be running on the server; check Telegram.");
-      if (e instanceof TypeError) throw new Error("Can't reach the server. Check the URL, that the tunnel is running, and that API_SERVER_CORS_ORIGINS includes " + location.origin + ".");
+      if (e instanceof TypeError) throw new Error("Can't reach your server. Check that the gateway and tunnel are running.");
       throw e;
     } finally { clearTimeout(timer); }
   }
   async function ping() {
     if (!conn) { online = false; renderHead(); return false; }
-    try { const m = await api("/v1/models"); online = true; if (m && m.data && m.data[0]) { conn.model = m.data[0].id; store.set("conn", conn); } }
+    try { await api("/auth/check"); online = true; }
     catch (e) { online = false; }
     renderHead(); return online;
   }
@@ -1127,16 +1159,16 @@
   function push(id, m) { (chats[id] = chats[id] || []).push(m); chats[id] = chats[id].slice(-40); store.set("chats", chats); }
   async function send(text) {
     const c = ccById[current], a = cardFor(c);
-    if (!conn) { push(c.id, { r: "me", t: text }); push(c.id, { r: "ai", err: true, t: "Not connected yet. Tap POWER below to add your server URL and key." + (store.get("bot", "") ? ` Or message @${store.get("bot", "")} on Telegram.` : "") }); renderRows(); return; }
+    if (!conn) { signOut(); return; }
     push(c.id, { r: "me", t: text });
     pending[a.id] = true; renderRows(); renderTiles();
     const hist = (chats[c.id] || []).filter(m => !m.err).slice(-12).map(m => ({ role: m.r === "me" ? "user" : "assistant", content: m.t }));
     const sys = `Omkar is messaging you from the Hermesville command center on his phone. In this thread you act as ${c.ctx} Keep replies short and plain enough for a phone screen. If you change a job or file, say exactly what changed.`;
     try {
-      const res = await api("/v1/chat/completions", { method: "POST", body: JSON.stringify({ model: conn.model || "hermes-agent", messages: [{ role: "system", content: sys }, ...hist] }) }, 300000);
+      const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ messages: [{ role: "system", content: sys }, ...hist] }) }, 300000);
       const reply = res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content;
       push(c.id, { r: "ai", t: reply || "(empty reply)" }); online = true;
-    } catch (e) { push(c.id, { r: "ai", err: true, t: e.message }); if (/reach|Key/.test(e.message)) online = false; }
+    } catch (e) { if (conn) push(c.id, { r: "ai", err: true, t: e.message }); if (/reach/.test(e.message)) online = false; }
     delete pending[a.id]; renderRows(); renderTiles(); renderHead();
     if (document.body.dataset.tab !== "cmd") $("cmdDot").hidden = false;
   }
@@ -1153,21 +1185,19 @@
   // POWER = connection settings
   function openSetup(show) {
     $("ccSetup").hidden = !show; $("ccRows").hidden = show;
-    if (show) { $("ccUrl").value = conn ? conn.url : ""; $("ccKey").value = conn ? conn.key : ""; $("ccBot").value = store.get("bot", ""); $("ccSetupMsg").textContent = ""; $("ccUrl").focus(); }
+    if (show) { $("ccWho").textContent = conn ? `Signed in to ${conn.url.replace(/^https?:\/\//, "")} until ${new Date(conn.exp * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.` : "Not signed in."; $("ccBot").value = store.get("bot", ""); $("ccSetupMsg").textContent = ""; }
   }
   $("ccPower").onclick = () => openSetup($("ccSetup").hidden);
   $("ccClose").onclick = () => openSetup(false);
-  $("ccForget").onclick = () => { conn = null; store.del("conn"); online = false; $("ccUrl").value = ""; $("ccKey").value = ""; $("ccSetupMsg").textContent = "Forgotten on this device."; renderHead(); renderRows(); };
+  $("ccForget").onclick = async () => {
+    try { if (conn) await fetch(base() + "/auth/logout", { method: "POST", headers: { "Authorization": "Bearer " + conn.token } }); } catch (e) {}
+    openSetup(false); signOut("Logged out.");
+  };
   $("ccSave").onclick = async () => {
-    const url = $("ccUrl").value.trim(), key = $("ccKey").value.trim(), bot = $("ccBot").value.trim().replace(/^@/, "");
-    store.set("bot", bot);
-    if (!/^https?:\/\//.test(url) || !key) { $("ccSetupMsg").textContent = "Enter the full server URL (starting with https://) and the API key."; return; }
-    conn = { url, key }; store.set("conn", conn);
-    $("ccSetupMsg").textContent = "Testing…"; renderHead();
+    store.set("bot", $("ccBot").value.trim().replace(/^@/, ""));
+    $("ccSetupMsg").textContent = "Testing…";
     const ok = await ping();
-    $("ccSetupMsg").textContent = ok ? "Connected. The terminal is online." : "Saved, but the server didn't answer. Check the URL, the tunnel and API_SERVER_CORS_ORIGINS.";
-    if (ok) setTimeout(() => openSetup(false), 900);
-    renderRows();
+    $("ccSetupMsg").textContent = ok ? "Saved. Your server is answering." : "Saved, but your server didn't answer.";
   };
 
   // tap a building in the city to talk to it
@@ -1199,19 +1229,19 @@
     ], notionName: "Notion (example)", errors: {}, sources: { calendar: true, notion: true } };
   }
   async function tapi(path, opts = {}) {
-    const r = await fetch(base() + "/tracking" + path, { ...opts, headers: { "Authorization": "Bearer " + conn.key, "Content-Type": "application/json" } });
-    if (r.status === 401) throw new Error("Key rejected. Check POWER settings in Command.");
-    if (r.status === 404) throw new Error("Tracking isn't running on the server yet. Run enable_tracking.sh.");
+    const r = await fetch(base() + "/api/tracking" + path.replace(/^\/api/, ""), { ...opts, headers: { "Authorization": "Bearer " + conn.token, "Content-Type": "application/json" } });
+    if (r.status === 401) { signOut("Your session ended. Log in again."); throw new Error("Session ended."); }
+    if (r.status === 502) throw new Error("The tracker isn't running on the server. Run enable_tracking.sh.");
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || "Server answered " + r.status);
     return j;
   }
   async function loadTrack(force) {
     if (tkLoading || (!force && track && !track.example && Date.now() - tkLast < 60000)) { renderTrack(); return; }
-    if (!conn) { track = exampleTrack(); renderTrack("Connect your server first: open Command and tap POWER."); return; }
+    if (!conn) return;
     tkLoading = true; $("tkRefresh").textContent = "Loading…";
     try { track = await tapi("/api/summary?days=8"); tkLast = Date.now(); renderTrack(); }
-    catch (e) { if (!track) track = exampleTrack(); renderTrack(e instanceof TypeError ? "Can't reach /tracking on your server. Run enable_tracking.sh, then Refresh." : e.message); }
+    catch (e) { if (!conn) return; if (!track) track = exampleTrack(); renderTrack(e instanceof TypeError ? "Can't reach your server. Check the gateway, then Refresh." : e.message); }
     finally { tkLoading = false; $("tkRefresh").textContent = "Refresh"; }
   }
   function renderTrack(setupMsg) {
@@ -1290,6 +1320,38 @@
     $("ccInput").focus();
   });
   setInterval(() => { if (document.body.dataset.tab === "track" && !document.hidden) loadTrack(); }, 300000);
+
+  // ---------- login gate ----------
+  function lock(msg) {
+    document.body.classList.add("locked");
+    $("gUrl").value = store.get("server", "");
+    $("gMsg").textContent = msg || ""; $("gMsg").style.color = msg === "Logged out." ? "var(--muted)" : "";
+    (store.get("server", "") ? $("gPass") : $("gUrl")).focus();
+  }
+  function signOut(msg) {
+    conn = null; store.del("session"); store.del("chats"); for (const k in chats) delete chats[k];
+    track = null; real = null; online = false; renderHead(); renderRows();
+    lock(msg);
+  }
+  function unlock() { document.body.classList.remove("locked"); ping(); pullStatus(); if (document.body.dataset.tab === "track") loadTrack(true); requestAnimationFrame(fit); }
+  $("gForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const url = $("gUrl").value.trim().replace(/\/+$/, ""), password = $("gPass").value, code = $("gCode").value.trim();
+    if (!/^https:\/\//.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)/.test(url)) { $("gMsg").textContent = "Enter your server address starting with https://"; return; }
+    $("gBtn").disabled = true; $("gBtn").textContent = "Checking…"; $("gMsg").textContent = ""; $("gMsg").style.color = "";
+    try {
+      const r = await fetch(url + "/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, code }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Login failed (" + r.status + ").");
+      conn = { url, token: j.token, exp: j.expires }; store.set("session", conn); store.set("server", url);
+      $("gPass").value = ""; $("gCode").value = ""; unlock();
+    } catch (err) {
+      $("gMsg").textContent = err instanceof TypeError ? "Can't reach that server. Check the address and that the gateway is running." : err.message;
+      $("gCode").value = ""; $("gCode").focus();
+    } finally { $("gBtn").disabled = false; $("gBtn").textContent = "Log in"; }
+  });
+  $("gCode").addEventListener("input", e => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6); });
+  if (!conn || (conn.exp && conn.exp * 1000 < Date.now())) signOut(); else unlock();
 
   // phone screens
   function phone() { return matchMedia("(max-width: 760px), (pointer: coarse) and (max-width: 1180px)").matches; }
