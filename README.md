@@ -51,6 +51,18 @@ python3 ~/hermesville/report_status.py news failed "search quota hit"
 
 `server/install_reporter.sh` installs the script and wires it into the reel video service. The GitHub token lives only in `~/.hermes/.env` on the server.
 
+## Command center
+
+Next to the city there's a green field terminal. Pick an agent, or tap its building, and message it directly. Each agent keeps its own thread. While Hermes is working on your request, that building lights up in the city.
+
+It talks to the [Hermes API server](https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server) (`/v1/chat/completions`) through a Tailscale Funnel URL. To set it up on the server:
+
+```
+bash server/enable_command_center.sh https://<username>.github.io
+```
+
+Then tap **POWER** in the app and enter the URL and key the script prints. The key is stored only on that device.
+
 ## The reel video factory
 
 `automations/reel-video/` holds the pipeline behind the Film Studio.
@@ -83,6 +95,7 @@ PEXELS_API_KEY=...
 - [ ] Job search helper moves into the empty lot
 - [ ] Better voice and word-by-word animated captions for the reels
 - [ ] Night shift: workers go home and lights switch off after the last job
+- [x] Command center: tap a building to message that agent
 - [ ] Click a building to see its last output
 
 ## License

@@ -1,6 +1,6 @@
 // Hermesville service worker: always try the network first so a new push
 // to GitHub shows up right away; fall back to the cached copy when offline.
-const CACHE = "hermesville-v1";
+const CACHE = "hermesville-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {

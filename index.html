@@ -35,9 +35,14 @@
     --body: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   }
+  [hidden] { display: none !important; }
   html, body { background: var(--ink); color: var(--text); }
   body { font-family: var(--body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)); }
-  .wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
+  .wrap { max-width: 1480px; margin: 0 auto; display: grid; gap: 18px; }
+  .main { display: grid; gap: 18px; align-items: start; }
+  .left { display: grid; gap: 18px; min-width: 0; }
+  @media (min-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr) 410px; } .cc { position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); } }
+  canvas.hot { cursor: pointer; }
 
   header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; }
   h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 46px); line-height: 1; margin: 0; letter-spacing: .5px; color: var(--sign); text-wrap: balance; }
@@ -90,6 +95,76 @@
   .note { font-size: 13px; color: var(--muted); margin: 0; }
   .note b { color: var(--text); font-weight: 600; }
   @media (max-width: 520px) { .clock { font-size: 22px; } }
+
+  /* ---------- Command center: a green field terminal ---------- */
+  .cc {
+    --t-body: #0c120f; --t-screen: #0a130e; --t-edge: #1d3a2a; --t-line: rgba(95, 208, 138, .16);
+    --t-green: #5fd08a; --t-dim: #3f8a5c; --t-text: #e9f4ee; --t-row: #a8dcbc; --t-hi: rgba(95, 208, 138, .13); --t-amber: #f0a24a;
+    display: grid; gap: 0; justify-items: center; width: 100%; max-width: 520px; margin-inline: auto;
+  }
+  .device { width: 100%; background: linear-gradient(180deg, #121a16, #0b100d); border: 1px solid #22302a; border-radius: 30px; padding: 12px; box-shadow: 0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05); }
+  .screen {
+    position: relative; overflow: hidden; border-radius: 22px; border: 1px solid var(--t-edge); padding: 20px 18px 16px;
+    background: radial-gradient(120% 80% at 50% 0%, #11261a 0%, var(--t-screen) 60%), var(--t-screen);
+    box-shadow: inset 0 0 40px rgba(0,0,0,.6), 0 0 0 1px rgba(95,208,138,.05);
+    display: grid; gap: 14px; color: var(--t-text);
+  }
+  .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(180deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px); }
+  .t-top { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--t-line); }
+  .eyebrow { font: 700 11px var(--mono); letter-spacing: .28em; text-transform: uppercase; color: var(--t-green); }
+  .t-title { font: 800 18px/1.25 var(--body); margin: 6px 0 0; color: var(--t-text); text-wrap: balance; }
+  .online { flex: none; font: 700 11px var(--mono); letter-spacing: .2em; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--t-green); color: var(--t-green); background: rgba(95,208,138,.08); }
+  .online.off { border-color: var(--t-amber); color: var(--t-amber); background: rgba(240,162,74,.08); }
+  .online.wait { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .panel { border: 1px solid var(--t-line); border-radius: 16px; background: rgba(0,0,0,.18); }
+  .query { padding: 12px 14px; display: grid; gap: 8px; }
+  .query label { font: 700 11px var(--mono); letter-spacing: .24em; color: var(--t-green); }
+  .qrow { display: flex; gap: 8px; align-items: center; }
+  #ccInput { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--t-text); caret-color: var(--t-green); font: 600 15px var(--mono); padding: 4px 0; }
+  #ccInput::placeholder { color: rgba(233,244,238,.55); }
+  .send { flex: none; font: 700 11px var(--mono); letter-spacing: .16em; color: #06120b; background: var(--t-green); border: 0; border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+  .send:disabled { opacity: .4; cursor: default; }
+  .send:focus-visible, .tile:focus-visible, .pwr:focus-visible, .tbtn:focus-visible, #ccInput:focus-visible { outline: 2px solid var(--t-green); outline-offset: 2px; }
+  .rows { padding: 8px; display: grid; gap: 2px; max-height: 330px; overflow-y: auto; scrollbar-color: var(--t-dim) transparent; }
+  .row { display: grid; grid-template-columns: 76px 1fr; gap: 10px; padding: 8px 10px; border-radius: 8px; font: 500 12.5px/1.5 var(--mono); color: var(--t-row); }
+  .row .k { color: var(--t-row); opacity: .85; }
+  .row .v { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .row.hi { background: var(--t-hi); color: var(--t-text); }
+  .row.hi .k { color: var(--t-text); opacity: 1; }
+  .row.me .v { color: var(--t-text); }
+  .row.err .v, .row.err .k { color: var(--t-amber); }
+  .row.ex { opacity: .6; }
+  .sep { font: 700 10px var(--mono); letter-spacing: .24em; color: var(--t-dim); padding: 10px 10px 4px; text-transform: uppercase; }
+  .dots::after { content: "…"; animation: blink .8s steps(2) infinite; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .tile { text-align: left; cursor: pointer; border: 1px solid var(--t-line); border-radius: 14px; background: rgba(0,0,0,.18); padding: 11px 12px; display: grid; gap: 4px; color: var(--t-row); }
+  .tile .n { font: 700 10.5px var(--mono); letter-spacing: .2em; color: var(--t-dim); }
+  .tile .l { font: 600 13.5px/1.3 var(--body); }
+  .tile .s { font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--t-dim); }
+  .tile[aria-pressed="true"] { background: rgba(95,208,138,.12); border-color: rgba(95,208,138,.45); color: var(--t-text); }
+  .tile[aria-pressed="true"] .n { color: var(--t-text); }
+  .tile .s.working, .tile .s.sending { color: var(--t-green); }
+  .tile .s.failed { color: var(--t-amber); }
+  .t-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--t-line); font: 700 10.5px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--t-row); }
+  .base { width: 86%; margin-top: -2px; background: linear-gradient(180deg, #1a211d, #111612); border: 1px solid #22302a; border-top: 0; border-radius: 0 0 18px 18px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .vents { display: flex; gap: 6px; } .vents i { width: 5px; height: 24px; border-radius: 3px; background: #2a332e; box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+  .pwr { background: none; border: 0; cursor: pointer; font: 700 10.5px var(--mono); letter-spacing: .3em; color: #7d8a83; padding: 6px 10px; border-radius: 8px; }
+  .pwr:hover { color: var(--t-text); }
+  .led { width: 14px; height: 14px; border-radius: 4px; background: var(--t-amber); box-shadow: 0 0 10px rgba(240,162,74,.7); }
+  .led.on { background: var(--t-green); box-shadow: 0 0 12px rgba(95,208,138,.8); }
+  .setup { display: grid; gap: 10px; padding: 14px; }
+  .setup p { margin: 0; font: 500 12.5px/1.55 var(--mono); color: var(--t-row); }
+  .setup code { color: var(--t-text); }
+  .fld { display: grid; gap: 4px; }
+  .fld span { font: 700 10.5px var(--mono); letter-spacing: .2em; color: var(--t-green); text-transform: uppercase; }
+  .fld input { background: rgba(0,0,0,.3); border: 1px solid var(--t-line); border-radius: 10px; color: var(--t-text); font: 500 13px var(--mono); padding: 9px 10px; }
+  .fld input:focus { outline: 2px solid var(--t-green); outline-offset: 1px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tbtn { font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; border-radius: 10px; padding: 9px 12px; cursor: pointer; border: 1px solid var(--t-line); background: rgba(0,0,0,.2); color: var(--t-row); }
+  .tbtn.pri { background: var(--t-green); color: #06120b; border-color: var(--t-green); }
+  .tlink { color: var(--t-green); }
+  @media (prefers-reduced-motion: reduce) { .online.wait, .dots::after { animation: none; } }
 </style>
 </head>
 <body>
@@ -110,16 +185,53 @@
     </div>
   </header>
 
+  <div class="main">
+  <div class="left">
   <div class="stage"><div class="scroller"><canvas id="city" width="1280" height="540" aria-label="Animated cartoon city: Writers' Studio, Film Studio, Newsroom, Post Office and a construction lot for the next agent"></canvas></div></div>
 
   <div class="tlbox">
     <div class="tlhead"><span><b>Morning run</b> · 6:55 to 8:15 IST · click to jump</span><span><span class="src" id="src">Simulated</span> <span id="nextUp"></span></span></div>
     <div class="tl" id="tl" tabindex="0" role="slider" aria-label="Time of the morning run" aria-valuemin="415" aria-valuemax="495"></div>
   </div>
+  </div>
+
+  <aside class="cc" id="cc" aria-label="Command center">
+    <div class="device">
+      <div class="screen">
+        <div class="t-top">
+          <div><div class="eyebrow">Command center</div><h2 class="t-title" id="ccTitle">Talk to the Writers' Studio</h2></div>
+          <span class="online off" id="ccOnline">OFFLINE</span>
+        </div>
+
+        <form class="panel query" id="ccForm" autocomplete="off">
+          <label for="ccInput">QUERY</label>
+          <div class="qrow"><input id="ccInput" type="text" enterkeyhint="send"><button class="send" id="ccSend" type="submit">SEND</button></div>
+        </form>
+
+        <div class="panel rows" id="ccRows" aria-live="polite"></div>
+
+        <div class="panel setup" id="ccSetup" hidden>
+          <div class="eyebrow">Connect your server</div>
+          <p>The command center talks to Hermes through its API server. The key stays on this phone only.</p>
+          <label class="fld"><span>Server URL</span><input id="ccUrl" type="url" placeholder="https://hermes-server.tailXXXX.ts.net" inputmode="url"></label>
+          <label class="fld"><span>API key</span><input id="ccKey" type="password" placeholder="API_SERVER_KEY from ~/.hermes/.env"></label>
+          <label class="fld"><span>Telegram bot (optional)</span><input id="ccBot" type="text" placeholder="your_bot_username"></label>
+          <div class="btns"><button class="tbtn pri" type="button" id="ccSave">Save + test</button><button class="tbtn" type="button" id="ccForget">Forget</button><button class="tbtn" type="button" id="ccClose">Close</button></div>
+          <p id="ccSetupMsg"></p>
+        </div>
+
+        <div class="tiles" id="ccTiles" role="group" aria-label="Choose an agent"></div>
+
+        <div class="t-foot"><span id="ccOut">OUTPUT: REEL SCRIPT</span><span id="ccName">WRITERS' STUDIO</span></div>
+      </div>
+    </div>
+    <div class="base"><div class="vents"><i></i><i></i><i></i><i></i></div><button class="pwr" type="button" id="ccPower" aria-label="Server connection settings">POWER</button><span class="led" id="ccLed"></span></div>
+  </aside>
+  </div>
 
   <section class="roster" id="roster" aria-label="Agents"></section>
 
-  <p class="note"><b>Status is simulated from each job's schedule.</b> The next step is a small script on the server that reports real runs, so a failed job shows up here as a building in trouble.</p>
+  <p class="note"><b>Tap a building</b> to talk to that agent in the command center. Building status comes from your server's <code>status.json</code> when it reports, and from the schedule otherwise.</p>
 </div>
 
 <script>
@@ -173,7 +285,9 @@
     const at = new Date(j.at);
     return isNaN(at) || istDate(at) !== istDate(new Date()) ? null : j;   // only today's runs count
   }
+  const pending = {};
   function effStatus(a, t) {
+    if (pending[a.id]) return a.id === "post" ? "sending" : "working";
     if (mode === "live" && a.id !== "post") { const j = realJob(a.id); if (j && REAL_MAP[j.state]) return REAL_MAP[j.state]; }
     return status(a, t);
   }
@@ -490,6 +604,180 @@
     const d = upcoming[0], hh = Math.floor(d / 60), mm = Math.floor(d % 60);
     $("nextUp").textContent = `Next: ${upcoming[1].name} in ${hh ? hh + "h " : ""}${mm}m`;
   }
+
+  // ---------- command center ----------
+  const CC = [
+    { id: "writer", b: "writer", tag: "Writer", label: "Writers' Studio", out: "Reel script",
+      tries: ["Write tomorrow's reel about black holes", "Which topics did we cover this week?", "Make the hooks punchier"],
+      ctx: "the Writers' Studio: the 'Daily Reel Script Generator' cron job (07:00 IST). It writes /home/opc/reels/today.json and logs topics in /home/opc/reels/history.txt." },
+    { id: "film", b: "film", tag: "Film", label: "Film Studio", out: "Reel video",
+      tries: ["Why did today's video fail?", "Re-run today's reel now", "Show the last 20 log lines"],
+      ctx: "the Film Studio: the reel video pipeline. /home/opc/reels/make_reel.py runs from the systemd user timer reel-video.timer at 07:10 IST; logs via journalctl --user -u reel-video." },
+    { id: "news", b: "news", tag: "News", label: "Newsroom", out: "AI digest",
+      tries: ["Send me the top 3 AI stories now", "Add a section on open-source models", "Move the digest to 7:30"],
+      ctx: "the Newsroom: the daily AI news digest cron job (08:00 IST) that searches the web and writes a top-5 digest plus a Shorts script." },
+    { id: "hq", b: "post", tag: "Hermes", label: "Hermes HQ", out: "Anything",
+      tries: ["What's running on my server right now?", "List my scheduled jobs", "How much disk space is left?"],
+      ctx: "Hermes HQ: general requests about Omkar's server, schedules and automations." },
+  ];
+  const ccById = Object.fromEntries(CC.map(c => [c.id, c]));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("hv." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("hv." + k, JSON.stringify(v)); } catch (e) {} },
+    del(k) { try { localStorage.removeItem("hv." + k); } catch (e) {} },
+  };
+  let conn = store.get("conn", null), online = false, current = store.get("agent", "writer");
+  if (!ccById[current]) current = "writer";
+  const chats = store.get("chats", {});
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const EXAMPLE = [
+    { r: "me", t: "Write tomorrow's reel about black holes" },
+    { r: "ai", t: "Done. Saved to today.json: \"A black hole doesn't suck things in any harder than a star of the same mass.\" 6 segments, 38 seconds." },
+  ];
+
+  function cardFor(c) { return byId[c.b]; }
+  function ccStatus(c) { return effStatus(cardFor(c), simT); }
+
+  function renderTiles() {
+    $("ccTiles").innerHTML = CC.map((c, i) => {
+      const st = ccStatus(c);
+      return `<button type="button" class="tile" data-id="${c.id}" aria-pressed="${c.id === current}">
+        <span class="n">AGENT 0${i + 1}</span><span class="l">${esc(c.label)}</span><span class="s ${st}">${esc(LABEL[st] || st)}</span></button>`;
+    }).join("");
+  }
+  function renderRows() {
+    const c = ccById[current], a = cardFor(c), st = ccStatus(c), j = realJob(a.id === "post" ? "" : a.id);
+    const info = [
+      ["Focus", a.what],
+      ["Schedule", a.start != null ? `Daily ${fmt(a.start)} IST` : "On demand"],
+      ["Status", LABEL[st] || st],
+      ["Last run", j ? `${fmtAt(j.at)} · ${j.state}${j.note ? " · " + j.note : ""}` : "No report today"],
+    ];
+    let h = info.map(([k, v]) => `<div class="row${k === "Status" ? " hi" : ""}"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`).join("");
+    const log = chats[current] || [];
+    const shown = log.length ? log : (conn ? [] : EXAMPLE.map(m => ({ ...m, ex: true })));
+    if (shown.length) {
+      h += `<div class="sep">${log.length ? "Conversation" : "Example"}</div>`;
+      shown.forEach((m, i) => {
+        const last = i === shown.length - 1 && m.r === "ai";
+        h += `<div class="row ${m.r === "me" ? "me" : ""}${m.err ? " err" : ""}${last ? " hi" : ""}${m.ex ? " ex" : ""}"><span class="k">${m.r === "me" ? "You" : esc(c.tag)}</span><span class="v">${esc(m.t)}</span></div>`;
+      });
+    }
+    if (pending[a.id]) h += `<div class="row hi"><span class="k">${esc(c.tag)}</span><span class="v dots">working</span></div>`;
+    const box = $("ccRows"), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    box.innerHTML = h;
+    if (pending[a.id] || (log.length && atEnd)) box.scrollTop = box.scrollHeight;
+  }
+  function renderHead() {
+    const c = ccById[current];
+    $("ccTitle").textContent = `Talk to the ${c.label.replace(/^Hermes HQ$/, "Hermes HQ")}`;
+    $("ccOut").textContent = "OUTPUT: " + c.out.toUpperCase();
+    $("ccName").textContent = c.label.toUpperCase();
+    const o = $("ccOnline");
+    o.textContent = !conn ? "OFFLINE" : online ? "ONLINE" : "LINKING";
+    o.className = "online" + (!conn ? " off" : online ? "" : " off wait");
+    $("ccLed").className = "led" + (online ? " on" : "");
+  }
+  function select(id, focus) {
+    current = id; store.set("agent", id); typer.reset();
+    const box = $("ccRows"); box.scrollTop = 0;
+    renderTiles(); renderRows(); renderHead();
+    if ((chats[id] || []).length) box.scrollTop = box.scrollHeight;
+    if (focus && window.innerWidth < 1100) $("cc").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  }
+
+  // typing placeholder, like the reference terminal
+  const typer = (() => {
+    let i = 0, n = 0, del = false, pause = 0;
+    const input = $("ccInput");
+    function tick() {
+      const list = ccById[current].tries, text = list[i % list.length];
+      if (document.activeElement === input || input.value) { input.placeholder = text; return; }
+      if (pause > 0) { pause--; return; }
+      if (!del) { n++; if (n >= text.length) { del = true; pause = 14; } }
+      else { n -= 2; if (n <= 0) { n = 0; del = false; i++; pause = 3; } }
+      input.placeholder = text.slice(0, n) + (reduced ? "" : "▌");
+    }
+    if (reduced) input.placeholder = ccById[current].tries[0]; else setInterval(tick, 70);
+    return { reset() { i = 0; n = 0; del = false; input.placeholder = ccById[current].tries[0]; } };
+  })();
+
+  function base() { return conn.url.replace(/\/+$/, "").replace(/\/v1$/, ""); }
+  async function api(path, opts = {}, ms = 15000) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(base() + path, { ...opts, signal: ctl.signal, headers: { "Authorization": "Bearer " + conn.key, "Content-Type": "application/json", ...(opts.headers || {}) } });
+      if (r.status === 401 || r.status === 403) throw new Error("Key rejected. Check API_SERVER_KEY on the server and in POWER settings.");
+      if (!r.ok) throw new Error(`Server answered ${r.status}. ${(await r.text()).slice(0, 160)}`);
+      return r.json();
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("No answer in time. The job may still be running on the server; check Telegram.");
+      if (e instanceof TypeError) throw new Error("Can't reach the server. Check the URL, that the tunnel is running, and that API_SERVER_CORS_ORIGINS includes " + location.origin + ".");
+      throw e;
+    } finally { clearTimeout(timer); }
+  }
+  async function ping() {
+    if (!conn) { online = false; renderHead(); return false; }
+    try { const m = await api("/v1/models"); online = true; if (m && m.data && m.data[0]) { conn.model = m.data[0].id; store.set("conn", conn); } }
+    catch (e) { online = false; }
+    renderHead(); return online;
+  }
+
+  function push(id, m) { (chats[id] = chats[id] || []).push(m); chats[id] = chats[id].slice(-40); store.set("chats", chats); }
+  async function send(text) {
+    const c = ccById[current], a = cardFor(c);
+    if (!conn) { push(c.id, { r: "me", t: text }); push(c.id, { r: "ai", err: true, t: "Not connected yet. Tap POWER below to add your server URL and key." + (store.get("bot", "") ? ` Or message @${store.get("bot", "")} on Telegram.` : "") }); renderRows(); return; }
+    push(c.id, { r: "me", t: text });
+    pending[a.id] = true; renderRows(); renderTiles();
+    const hist = (chats[c.id] || []).filter(m => !m.err).slice(-12).map(m => ({ role: m.r === "me" ? "user" : "assistant", content: m.t }));
+    const sys = `Omkar is messaging you from the Hermesville command center on his phone. In this thread you act as ${c.ctx} Keep replies short and plain enough for a phone screen. If you change a job or file, say exactly what changed.`;
+    try {
+      const res = await api("/v1/chat/completions", { method: "POST", headers: { "X-Hermes-Session-Key": "hermesville-" + c.id }, body: JSON.stringify({ model: conn.model || "hermes-agent", messages: [{ role: "system", content: sys }, ...hist] }) }, 300000);
+      const reply = res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content;
+      push(c.id, { r: "ai", t: reply || "(empty reply)" }); online = true;
+    } catch (e) { push(c.id, { r: "ai", err: true, t: e.message }); if (/reach|Key/.test(e.message)) online = false; }
+    delete pending[a.id]; renderRows(); renderTiles(); renderHead();
+  }
+
+  $("ccForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const inp = $("ccInput"), text = inp.value.trim();
+    if (!text || pending[cardFor(ccById[current]).id]) return;
+    inp.value = ""; send(text);
+  });
+  $("ccTiles").addEventListener("click", e => { const t = e.target.closest(".tile"); if (t) select(t.dataset.id); });
+
+  // POWER = connection settings
+  function openSetup(show) {
+    $("ccSetup").hidden = !show; $("ccRows").hidden = show;
+    if (show) { $("ccUrl").value = conn ? conn.url : ""; $("ccKey").value = conn ? conn.key : ""; $("ccBot").value = store.get("bot", ""); $("ccSetupMsg").textContent = ""; $("ccUrl").focus(); }
+  }
+  $("ccPower").onclick = () => openSetup($("ccSetup").hidden);
+  $("ccClose").onclick = () => openSetup(false);
+  $("ccForget").onclick = () => { conn = null; store.del("conn"); online = false; $("ccUrl").value = ""; $("ccKey").value = ""; $("ccSetupMsg").textContent = "Forgotten on this device."; renderHead(); renderRows(); };
+  $("ccSave").onclick = async () => {
+    const url = $("ccUrl").value.trim(), key = $("ccKey").value.trim(), bot = $("ccBot").value.trim().replace(/^@/, "");
+    store.set("bot", bot);
+    if (!/^https?:\/\//.test(url) || !key) { $("ccSetupMsg").textContent = "Enter the full server URL (starting with https://) and the API key."; return; }
+    conn = { url, key }; store.set("conn", conn);
+    $("ccSetupMsg").textContent = "Testing…"; renderHead();
+    const ok = await ping();
+    $("ccSetupMsg").textContent = ok ? "Connected. The terminal is online." : "Saved, but the server didn't answer. Check the URL, the tunnel and API_SERVER_CORS_ORIGINS.";
+    if (ok) setTimeout(() => openSetup(false), 900);
+    renderRows();
+  };
+
+  // tap a building in the city to talk to it
+  const B2CC = { writer: "writer", film: "film", news: "news", post: "hq" };
+  function hit(e) {
+    const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+    return AGENTS.find(a => x >= a.x - 10 && x <= a.x + a.w + 20 && y >= GROUND - a.h - 70 && y <= GROUND + 20);
+  }
+  cv.addEventListener("click", e => { const a = hit(e); if (a) select(B2CC[a.id], true); });
+  cv.addEventListener("mousemove", e => cv.classList.toggle("hot", !!hit(e)));
+
+  setInterval(() => { renderTiles(); if (!document.activeElement || !$("ccRows").contains(document.activeElement)) renderRows(); }, 5000);
+  select(current); ping(); setInterval(ping, 120000);
 
   // ---------- controls ----------
   function setMode(m) {
