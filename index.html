@@ -1041,16 +1041,16 @@
   const CC = [
     { id: "writer", b: "writer", tag: "Writer", label: "Writers' Studio", out: "Reel script",
       tries: ["Write tomorrow's reel about black holes", "Which topics did we cover this week?", "Make the hooks punchier"],
-      ctx: "the Writers' Studio: the 'Daily Reel Script Generator' cron job (07:00 IST). It writes /home/opc/reels/today.json and logs topics in /home/opc/reels/history.txt." },
+      ctx: "the Writers' Studio: the 'Daily Reel Script Generator' cron job (07:00 IST). It writes ~/reels/today.json and logs topics in ~/reels/history.txt." },
     { id: "film", b: "film", tag: "Film", label: "Film Studio", out: "Reel video",
       tries: ["Why did today's video fail?", "Re-run today's reel now", "Show the last 20 log lines"],
-      ctx: "the Film Studio: the reel video pipeline. /home/opc/reels/make_reel.py runs from the systemd user timer reel-video.timer at 07:10 IST; logs via journalctl --user -u reel-video." },
+      ctx: "the Film Studio: the reel video pipeline. ~/reels/make_reel.py runs from the systemd user timer reel-video.timer at 07:10 IST; logs via journalctl --user -u reel-video." },
     { id: "news", b: "news", tag: "News", label: "Newsroom", out: "AI digest",
       tries: ["Send me the top 3 AI stories now", "Add a section on open-source models", "Move the digest to 7:30"],
       ctx: "the Newsroom: the daily AI news digest cron job (08:00 IST) that searches the web and writes a top-5 digest plus a Shorts script." },
     { id: "hq", b: "post", tag: "Hermes", label: "Hermes HQ", out: "Anything",
       tries: ["What's running on my server right now?", "List my scheduled jobs", "How much disk space is left?"],
-      ctx: "Hermes HQ: general requests about Omkar's server, schedules and automations." },
+      ctx: "Hermes HQ: general requests about the owner's server, schedules and automations." },
   ];
   const ccById = Object.fromEntries(CC.map(c => [c.id, c]));
   const store = {
@@ -1163,7 +1163,7 @@
     push(c.id, { r: "me", t: text });
     pending[a.id] = true; renderRows(); renderTiles();
     const hist = (chats[c.id] || []).filter(m => !m.err).slice(-12).map(m => ({ role: m.r === "me" ? "user" : "assistant", content: m.t }));
-    const sys = `Omkar is messaging you from the Hermesville command center on his phone. In this thread you act as ${c.ctx} Keep replies short and plain enough for a phone screen. If you change a job or file, say exactly what changed.`;
+    const sys = `Your owner is messaging you from the Hermesville command center on their phone. In this thread you act as ${c.ctx} Keep replies short and plain enough for a phone screen. If you change a job or file, say exactly what changed.`;
     try {
       const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ messages: [{ role: "system", content: sys }, ...hist] }) }, 300000);
       const reply = res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content;
@@ -1214,18 +1214,18 @@
   function exampleTrack() {
     const today = dayKey(Date.now()), at = (h, m, add = 0) => new Date(new Date(today + "T00:00:00+05:30").getTime() + (add * 1440 + h * 60 + m) * 6e4).toISOString();
     return { example: true, calendar: [
-      { title: "Dynatrace standup", start: at(9, 30), end: at(10, 0), location: "Teams" },
-      { title: "Deep work: observability dashboards", start: at(11, 0), end: at(13, 0) },
-      { title: "PortSwigger lab: SSRF", start: at(18, 0), end: at(19, 0) },
-      { title: "Boxing", start: at(19, 30), end: at(20, 30), location: "Gym" },
-      { title: "Record AI news video", start: at(22, 30), end: at(23, 30) },
-      { title: "Dynatrace standup", start: at(9, 30, 1), end: at(10, 0, 1), location: "Teams" },
-      { title: "Bug bounty recon", start: at(20, 0, 1), end: at(21, 30, 1) },
+      { title: "Team standup", start: at(9, 30), end: at(10, 0), location: "Video call" },
+      { title: "Deep work", start: at(11, 0), end: at(13, 0) },
+      { title: "Learning session", start: at(18, 0), end: at(19, 0) },
+      { title: "Workout", start: at(19, 30), end: at(20, 30), location: "Gym" },
+      { title: "Plan tomorrow", start: at(22, 30), end: at(23, 0) },
+      { title: "Team standup", start: at(9, 30, 1), end: at(10, 0, 1), location: "Video call" },
+      { title: "Side project", start: at(20, 0, 1), end: at(21, 30, 1) },
     ], notion: [
-      { id: "ex1", title: "Write up the SSRF lab for GitHub", due: today, done: false },
+      { id: "ex1", title: "Write a blog post about Hermesville", due: today, done: false },
       { id: "ex2", title: "Improve reel voice and captions", due: null, done: false },
-      { id: "ex3", title: "Job search helper: pick target roles", due: dayKey(Date.now() + 2 * 864e5), done: false },
-      { id: "ex4", title: "Push Hermesville v7", due: null, done: true },
+      { id: "ex3", title: "Add a new agent building", due: dayKey(Date.now() + 2 * 864e5), done: false },
+      { id: "ex4", title: "Set up 2FA", due: null, done: true },
     ], notionName: "Notion (example)", errors: {}, sources: { calendar: true, notion: true } };
   }
   async function tapi(path, opts = {}) {

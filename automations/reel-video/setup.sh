@@ -1,20 +1,32 @@
 #!/usr/bin/env bash
-# setup.sh - install the daily reel video pipeline on Oracle Linux (ARM or x86)
-# Run as the normal user (opc), NOT with sudo:   bash setup.sh
+# setup.sh - install the daily reel video pipeline (ARM or x86)
+# Works on Ubuntu/Debian and Oracle Linux/RHEL.
+# Run as your normal user, NOT with sudo:   bash setup.sh
 set -euo pipefail
 
 REELS="$HOME/reels"
 mkdir -p "$REELS" "$HOME/bin" "$HOME/.config/systemd/user"
 touch "$REELS/history.txt"
 
-echo "==> 1/5 System packages (python 3.11, fonts)"
-sudo dnf install -y python3.11 python3.11-pip dejavu-sans-fonts xz tar curl
+echo "==> 1/5 System packages (Python, fonts)"
+if command -v apt-get >/dev/null; then
+  sudo apt-get update -y
+  sudo apt-get install -y python3 python3-venv python3-pip fonts-dejavu-core xz-utils curl
+  PY=python3
+else
+  sudo dnf install -y python3.11 python3.11-pip dejavu-sans-fonts xz tar curl
+  PY=python3.11
+fi
 
-echo "==> 2/5 Optional offline fallback voice (espeak-ng from EPEL)"
-OLVER=$(rpm -E %rhel)
-sudo dnf install -y "oracle-epel-release-el${OLVER}" >/dev/null 2>&1 || true
-sudo dnf install -y espeak-ng >/dev/null 2>&1 && echo "   espeak-ng installed" \
-  || echo "   espeak-ng not available - skipping (only used if Microsoft voice fails)"
+echo "==> 2/5 Optional offline fallback voice (espeak-ng)"
+if command -v apt-get >/dev/null; then
+  sudo apt-get install -y espeak-ng >/dev/null 2>&1 && echo "   espeak-ng installed" || echo "   espeak-ng skipped"
+else
+  OLVER=$(rpm -E %rhel)
+  sudo dnf install -y "oracle-epel-release-el${OLVER}" >/dev/null 2>&1 || sudo dnf install -y epel-release >/dev/null 2>&1 || true
+  sudo dnf install -y espeak-ng >/dev/null 2>&1 && echo "   espeak-ng installed" \
+    || echo "   espeak-ng not available - skipping (only used if Microsoft voice fails)"
+fi
 
 echo "==> 3/5 ffmpeg (static build)"
 if ! command -v ffmpeg >/dev/null && [ ! -x "$HOME/bin/ffmpeg" ]; then
@@ -32,7 +44,7 @@ fi
 "$HOME/bin/ffmpeg" -version 2>/dev/null | head -1 || ffmpeg -version | head -1
 
 echo "==> 4/5 Python environment"
-python3.11 -m venv "$REELS/venv"
+"$PY" -m venv "$REELS/venv"
 "$REELS/venv/bin/pip" install -q --upgrade pip edge-tts requests pillow
 cp "$(dirname "$0")/make_reel.py" "$REELS/make_reel.py"
 

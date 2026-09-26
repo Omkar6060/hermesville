@@ -1,8 +1,14 @@
 .env
+*.env
+.env.*
+!docs/env.example
 *.key
+*.pem
 __pycache__/
 venv/
 work/
 videos/
 *.mp4
 today.json
+status.json
+revoked_sessions.json

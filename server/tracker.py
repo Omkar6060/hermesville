@@ -8,7 +8,7 @@ this server; the app only gets the data, and only with your API key.
 
 Config (in ~/.hermes/.env):
     API_SERVER_KEY           same key the command center uses
-    API_SERVER_CORS_ORIGINS  e.g. https://omkar6060.github.io
+    API_SERVER_CORS_ORIGINS  e.g. https://<username>.github.io
     GCAL_ICS_URL             Google Calendar "Secret address in iCal format"
                              (several calendars: separate with commas)
     NOTION_TOKEN             Notion internal integration secret (ntn_... / secret_...)
